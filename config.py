@@ -1,5 +1,4 @@
-# config.py
-# Este arquivo pode ser usado para armazenar configurações globais do projeto.
+# Este arquivo será usado para armazenar configurações globais do projeto.
 
 # Exemplo: Lista de criptomoedas a serem baixadas
 CRYPTOS_TO_DOWNLOAD = [

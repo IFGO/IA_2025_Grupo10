@@ -1,52 +1,35 @@
-# src/data_loader.py
 import pandas as pd
-import logging
-import urllib.error
-from typing import Optional
+import os
 
-def load_crypto_data(
-    base_symbol: str,
-    quote_symbol: str,
-    timeframe: str,
-    exchange: str = "Poloniex"
-) -> Optional[pd.DataFrame]:
-    """
-    Carrega os dados históricos de um par de criptomoedas de uma exchange específica.
-    Retorna um DataFrame do Pandas ou None em caso de falha.
-    """
-    pair = f"{base_symbol.upper()}{quote_symbol.upper()}"
-    url = f"https://www.cryptodatadownload.com/cdd/{exchange.capitalize()}_{pair}_{timeframe}.csv"
-
+def load_crypto_data(base_symbol: str, quote_symbol: str, timeframe: str, exchange: str = "Poloniex") -> pd.DataFrame:
     try:
-        logging.info(f"Tentando carregar dados para {pair} de {url}")
-        df = pd.read_csv(url, skiprows=1)
+        filename = f"{base_symbol.upper()}_{quote_symbol.upper()}_{timeframe}.csv"
+        filepath = os.path.join("data", "raw", filename)
 
-        if df.empty:
-            logging.warning(f"Os dados para {pair} no timeframe '{timeframe}' estão vazios.")
+        print(f"[DEBUG] Verificando caminho: {filepath} | Existe? {os.path.exists(filepath)}")
+
+        if not os.path.exists(filepath):
             return None
+
+        # ← skip a linha de comentário e trata BOM invisível
+        df = pd.read_csv(filepath, skiprows=1, encoding='utf-8-sig')
+
+        # Mostrar as colunas reais lidas
+        print("[DEBUG] Colunas lidas do CSV:", df.columns.tolist())
+
+        # Padronizar nomes
+        df.columns = [col.strip().lower() for col in df.columns]
+
+        print("[DEBUG] Colunas normalizadas:", df.columns.tolist())
+
+        # Garantir que 'date' exista
+        if 'date' not in df.columns:
+            raise ValueError(f"[ERRO] Coluna 'date' não encontrada. Colunas disponíveis: {df.columns.tolist()}")
 
         df['date'] = pd.to_datetime(df['date'])
-        df = df.sort_values('date').reset_index(drop=True)
 
-        # Garante que 'close' é numérico e lida com possíveis erros
-        if 'close' in df.columns:
-            df['close'] = pd.to_numeric(df['close'], errors='coerce')
-        else:
-            logging.error(f"Coluna 'close' não encontrada no DataFrame para {pair}.")
-            return None
+        return df.sort_values('date')
 
-        # Remove linhas com valores NaN resultantes da conversão de 'close'
-        df.dropna(subset=['close'], inplace=True)
-
-        if df.empty:
-            logging.warning(f"DataFrame vazio após remover NaNs na coluna 'close' para {pair}.")
-            return None
-
-        return df
-
-    except urllib.error.HTTPError as e:
-        logging.error(f"FALHA ao carregar {pair}. O recurso não foi encontrado (Erro HTTP {e.code}).")
-        return None
     except Exception as e:
-        logging.error(f"Ocorreu um erro inesperado ao carregar {pair}. Erro: {e}")
+        print(f"[ERRO] Falha ao carregar dados de {base_symbol}: {e}")
         return None

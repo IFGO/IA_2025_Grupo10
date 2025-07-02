@@ -1,4 +1,3 @@
-# main.py
 import pandas as pd
 import os
 import logging
@@ -14,11 +13,13 @@ from src.model_training import train_and_evaluate_model, compare_models # Novos 
 from src.prediction_profit import simulate_investment_and_profit # Novo módulo
 from src.statistical_tests import perform_hypothesis_test, perform_anova_analysis # Novo módulo
 
+
 def setup_logging(level=logging.INFO):
-    """
-    Configura o sistema de logging para o projeto.
-    """
-    logging.basicConfig(level=level, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(
+        level=level,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        force=True  # ← ESSENCIAL após rodar pytest
+    )
 
 def main():
     """
@@ -44,6 +45,8 @@ def main():
                         help="Grau máximo para a regressão polinomial (de 2 a 10).")
 
     args = parser.parse_args()
+
+    print(f">>> Executando ação: {args.action} para crypto: {args.crypto}")
 
     # --- Configurações Gerais ---
     criptos_para_baixar = [
@@ -95,6 +98,7 @@ def main():
             if df is not None and not df.empty:
                 nome_arquivo = f"{simbolo_base.upper()}_{moeda_cotacao.upper()}_{timeframe}.csv"
                 caminho_arquivo = os.path.join(output_folder, nome_arquivo)
+                print(f"[DEBUG] Verificando caminho: {caminho_arquivo} | Existe? {os.path.exists(caminho_arquivo)}")
                 df.to_csv(caminho_arquivo, index=False)
 
                 log_info.update({
@@ -129,10 +133,13 @@ def main():
                     continue
                 nome_arquivo = f"{simbolo_base.upper()}_{moeda_cotacao.upper()}_{timeframe}.csv"
                 caminho_arquivo = os.path.join(output_folder, nome_arquivo)
+                print(f"[DEBUG] Verificando caminho: {caminho_arquivo} | Existe? {os.path.exists(caminho_arquivo)}")
                 if os.path.exists(caminho_arquivo):
-                    df = pd.read_csv(caminho_arquivo)
-                    df['date'] = pd.to_datetime(df['date'])
-                    all_dfs[f"{simbolo_base.upper()}_{moeda_cotacao.upper()}"] = df
+                    df = load_crypto_data(simbolo_base, moeda_cotacao, timeframe)
+                    if df is not None:
+                        all_dfs[f"{simbolo_base.upper()}_{moeda_cotacao.upper()}"] = df
+                    else:
+                        logging.warning(f"Falha ao carregar dados para análise: {simbolo_base}")
                 else:
                     logging.warning(f"Arquivo não encontrado para análise: {caminho_arquivo}")
 
@@ -150,7 +157,7 @@ def main():
                 print("-" * 70)
                 logging.info("Gerando relatório de análise estatística descritiva...")
                 df_stats = pd.DataFrame.from_dict(all_stats, orient='index')
-                df_stats.to_csv(os.path.join(analysis_folder, "relatorio_estatistico_descritivo.csv"))
+                df_stats.to_csv(os.path.join(stats_reports_folder, "relatorio_estatistico_descritivo.csv"), index_label="Métrica")
                 print("\n*** Relatório de Análise Estatística (Preço de Fechamento) ***\n")
                 print(df_stats)
                 print(f"\nGráficos de análise consolidados salvos na pasta: '{analysis_folder}'")
@@ -159,7 +166,7 @@ def main():
                 print("-" * 70)
                 logging.info("Gerando relatório de análise de variabilidade comparativa...")
                 df_variability = calculate_comparative_variability(all_dfs)
-                df_variability.to_csv(os.path.join(analysis_folder, "relatorio_comparativo_volatilidade.csv"), index=False)
+                df_variability.to_csv(os.path.join(stats_reports_folder, "relatorio_comparativo_volatilidade.csv"), index=False)
                 print("\n*** Análise Comparativa de Volatilidade (Ordenado pela Maior Relativa) ***\n")
                 print(df_variability.to_string())
             else:
@@ -177,10 +184,13 @@ def main():
                         continue
                     nome_arquivo = f"{simbolo_base.upper()}_{moeda_cotacao.upper()}_{timeframe}.csv"
                     caminho_arquivo = os.path.join(output_folder, nome_arquivo)
+                    print(f"[DEBUG] Verificando caminho: {caminho_arquivo} | Existe? {os.path.exists(caminho_arquivo)}")
                     if os.path.exists(caminho_arquivo):
-                        df = pd.read_csv(caminho_arquivo)
-                        df['date'] = pd.to_datetime(df['date'])
-                        all_dfs[f"{simbolo_base.upper()}_{moeda_cotacao.upper()}"] = df
+                        df = load_crypto_data(simbolo_base, moeda_cotacao, timeframe)
+                        if df is not None:
+                            all_dfs[f"{simbolo_base.upper()}_{moeda_cotacao.upper()}"] = df
+                        else:
+                            logging.warning(f"Falha ao carregar dados para análise: {simbolo_base}")
                     else:
                         logging.warning(f"Arquivo não encontrado para engenharia de features: {caminho_arquivo}")
 
@@ -316,10 +326,13 @@ def main():
                         continue
                     nome_arquivo = f"{simbolo_base.upper()}_{moeda_cotacao.upper()}_{timeframe}.csv"
                     caminho_arquivo = os.path.join(output_folder, nome_arquivo)
+                    print(f"[DEBUG] Verificando caminho: {caminho_arquivo} | Existe? {os.path.exists(caminho_arquivo)}")
                     if os.path.exists(caminho_arquivo):
-                        df = pd.read_csv(caminho_arquivo)
-                        df['date'] = pd.to_datetime(df['date'])
-                        all_dfs[f"{simbolo_base.upper()}_{moeda_cotacao.upper()}"] = df
+                        df = load_crypto_data(simbolo_base, moeda_cotacao, timeframe)
+                        if df is not None:
+                            all_dfs[f"{simbolo_base.upper()}_{moeda_cotacao.upper()}"] = df
+                        else:
+                            logging.warning(f"Falha ao carregar dados para análise: {simbolo_base}")
                     else:
                         logging.warning(f"Arquivo não encontrado para testes estatísticos: {caminho_arquivo}")
 
@@ -342,6 +355,6 @@ def main():
 
         print("\nFLUXO DE TRABALHO CONCLUÍDO!")
 
-    if __name__ == '__main__':
-        main()
+if __name__ == '__main__':
+    main()
     

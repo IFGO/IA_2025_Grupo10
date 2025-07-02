@@ -1,4 +1,3 @@
-# tests/test_model_training.py
 import pytest
 import pandas as pd
 import numpy as np

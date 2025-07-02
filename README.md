@@ -5,34 +5,34 @@ Projeto de previsão de preços de criptomoedas com base em aprendizado de máqu
 ```
 .
 ├── data/
-│   ├── raw/              # Dados brutos baixados das exchanges
-│   └── processed/        # Dados após a engenharia de features
-├── figures/              # Onde todos os gráficos e relatórios visuais são salvos
-│   ├── simple_plots/     # Gráficos de séries temporais simples
-│   ├── analysis_plots/   # Gráficos de análise estatística (histogramas, boxplots, diagramas de dispersão)
-│   ├── profit_plots/     # Gráficos de evolução do lucro das simulações
-│   └── statistical_reports/ # Relatórios de testes estatísticos (hipótese, ANOVA)
-├── models/               # Modelos de Machine Learning treinados (salvos como arquivos .pkl)
-├── src/                  # Módulos Python principais com a lógica do negócio
-│   ├── init.py       # Torna 'src' um pacote Python
-│   ├── data_loader.py    # Responsável por carregar dados históricos de criptomoedas
-│   ├── data_analyzer.py  # Realiza análises estatísticas descritivas e gera gráficos de análise
-│   ├── data_visualizer.py# Gera gráficos de linha simples para séries temporais
-│   ├── feature_engineering.py # Cria e transforma features para os modelos
-│   ├── model_training.py # Lida com o treinamento, avaliação e comparação de modelos de regressão
-│   ├── prediction_profit.py # Simula investimentos e calcula o lucro potencial
-│   └── statistical_tests.py # Implementa testes de hipótese e Análise de Variância (ANOVA)
-├── tests/                # Casos de teste automatizados para validação do código
-│   ├── init.py       # Torna 'tests' um pacote Python
-│   ├── test_data_loader.py
-│   ├── test_data_analyzer.py
-│   ├── test_data_visualizer.py
-│   ├── test_feature_engineering.py
-│   └── test_model_training.py
-├── main.py               # Script principal configurável via linha de comando (CLI)
-├── config.py             # (Opcional) Arquivo para configurações globais do projeto
-├── README.md             # Este arquivo de documentação
-└── requirements.txt      # Lista de dependências do projeto
+│   ├── raw/                        # Dados brutos baixados das exchanges
+│   └── processed/                  # Dados após a engenharia de features
+├── figures/                        # Onde todos os gráficos e relatórios visuais são salvos
+│   ├── simple_plots/               # Gráficos de séries temporais simples
+│   ├── analysis_plots/             # Gráficos de análise estatística (histogramas, boxplots, diagramas de dispersão)
+│   ├── profit_plots/               # Gráficos de evolução do lucro das simulações
+│   └── statistical_reports/        # Relatórios de testes estatísticos (hipótese, ANOVA)
+├── models/                         # Modelos de Machine Learning treinados (salvos como arquivos .pkl)
+├── src/                            # Módulos Python principais com a lógica do negócio
+│   ├── init.py                     # Torna 'src' um pacote Python
+│   ├── data_loader.py              # Responsável por carregar dados históricos de criptomoedas
+│   ├── data_analyzer.py            # Realiza análises estatísticas descritivas e gera gráficos de análise
+│   ├── data_visualizer.py          # Gera gráficos de linha simples para séries temporais
+│   ├── feature_engineering.py      # Cria e transforma features para os modelos
+│   ├── model_training.py           # Lida com o treinamento, avaliação e comparação de modelos de regressão
+│   ├── prediction_profit.py        # Simula investimentos e calcula o lucro potencial
+│   └── statistical_tests.py        # Implementa testes de hipótese e Análise de Variância (ANOVA)
+├── tests/                          # Casos de teste automatizados para validação do código
+│   ├── init.py                     # Torna 'tests' um pacote Python
+│   ├── test_data_loader.py         #Teste do data loader (carregador dos dados históricos)
+│   ├── test_data_analyzer.py       #Teste do data_analyzer (analisador estatístico)
+│   ├── test_data_visualizer.py     #Teste do data_visualizer (gerador de gráficos pra séries temporais)
+│   ├── test_feature_engineering.py #Teste do feature_engineering (criador e transformador de features para os modelos)
+│   └── test_model_training.py      #Teste do model_training (treinador, avaliador e comparativo de modelos de regressão)
+├── main.py                         # Script principal configurável via linha de comando (CLI)
+├── config.py                       # (Opcional) Arquivo para configurações globais do projeto
+├── README.md                       # Este arquivo de documentação
+└── requirements.txt                # Lista de dependências do projeto
 ```
 **Clone o repositório (se aplicável) ou crie a estrutura de pastas:**
 
@@ -52,7 +52,7 @@ source venv/bin/activate  # Linux/macOS
 venv\Scripts\activate     # Windows
 pip install -r requirements.txt
 ```
-O arquivo `requirements.txt` deve conter:
+O arquivo `requirements.txt` indica os requisitos que o projeto deve conter, que atualmente são:
     ```
     pandas
     numpy
