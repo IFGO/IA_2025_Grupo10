@@ -11,3 +11,4 @@ ruff
 python-dotenv
 pytest
 pytest-cov
+ta

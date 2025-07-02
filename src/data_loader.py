@@ -1,4 +1,3 @@
-# data_loader.py
 import pandas as pd
 import logging
 import urllib.error
@@ -30,7 +29,13 @@ def load_crypto_data(
         
         if 'close' in df.columns:
             df['close'] = pd.to_numeric(df['close'], errors='coerce')
-        
+        else:
+            logging.error(f"Coluna 'close' não encontrada no DataFrame para {pair}.")
+            return None
+        df.dropna(subset=['close'], inplace=True)
+        if df.empty:
+            logging.warning(f"DataFrame vazio após remover NaNs na coluna 'close' para {pair}.")
+            return None
         return df
 
     except urllib.error.HTTPError as e:
