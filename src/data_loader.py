@@ -19,18 +19,15 @@ def load_crypto_data(
     
     try:
         logging.info(f"Tentando carregar dados para {pair} de {url}")
-        # O skiprows=1 pula o cabeçalho de aviso do site
         df = pd.read_csv(url, skiprows=1)
 
         if df.empty:
             logging.warning(f"Os dados para {pair} no timeframe '{timeframe}' estão vazios.")
             return None
 
-        # Converte a coluna 'date' para datetime e ordena
         df['date'] = pd.to_datetime(df['date'])
         df = df.sort_values('date').reset_index(drop=True)
         
-        # Assegura que a coluna 'close' é numérica
         if 'close' in df.columns:
             df['close'] = pd.to_numeric(df['close'], errors='coerce')
         

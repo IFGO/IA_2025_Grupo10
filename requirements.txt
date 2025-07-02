@@ -9,3 +9,5 @@ pytest-cov
 black
 ruff
 python-dotenv
+pytest
+pytest-cov
