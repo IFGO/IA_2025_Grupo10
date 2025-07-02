@@ -1,3 +1,4 @@
+# src/data_loader.py
 import pandas as pd
 import logging
 import urllib.error
@@ -15,7 +16,7 @@ def load_crypto_data(
     """
     pair = f"{base_symbol.upper()}{quote_symbol.upper()}"
     url = f"https://www.cryptodatadownload.com/cdd/{exchange.capitalize()}_{pair}_{timeframe}.csv"
-    
+
     try:
         logging.info(f"Tentando carregar dados para {pair} de {url}")
         df = pd.read_csv(url, skiprows=1)
@@ -26,16 +27,21 @@ def load_crypto_data(
 
         df['date'] = pd.to_datetime(df['date'])
         df = df.sort_values('date').reset_index(drop=True)
-        
+
+        # Garante que 'close' é numérico e lida com possíveis erros
         if 'close' in df.columns:
             df['close'] = pd.to_numeric(df['close'], errors='coerce')
         else:
             logging.error(f"Coluna 'close' não encontrada no DataFrame para {pair}.")
             return None
+
+        # Remove linhas com valores NaN resultantes da conversão de 'close'
         df.dropna(subset=['close'], inplace=True)
+
         if df.empty:
             logging.warning(f"DataFrame vazio após remover NaNs na coluna 'close' para {pair}.")
             return None
+
         return df
 
     except urllib.error.HTTPError as e:

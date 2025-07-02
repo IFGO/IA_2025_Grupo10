@@ -1,120 +1,49 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[codz]
-*$py.class
+# Ignorar arquivos e pastas gerados automaticamente pelo Python e pelo ambiente de desenvolvimento
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py.cover
-.hypothesis/
-.pytest_cache/
-cover/
-
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-.pybuilder/
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
- This is especially recommended for binary packages to ensure reproducibility, and is more
-
-.pdm-python
-.pdm-build/
-
-__pypackages__/
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
-.env
-.envrc
-.venv
+# Ambientes virtuais
+.venv/
 env/
 venv/
 ENV/
 env.bak/
 venv.bak/
 
-# Spyder project settings
-.spyderproject
-.spyproject
+# Byte-code compilado
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
-# Rope project settings
-.ropeproject
+# Arquivos de distribuição
+dist/
+build/
+*.egg-info/
+.eggs/
 
-# mkdocs documentation
-/site
+# Arquivos de log e dados temporários
+*.log
+*.tmp
+*.temp
+temp/
+tmp/
 
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
+# Arquivos de dados gerados
+data/raw/*.csv # Ignora os CSVs baixados, se você não quiser versioná-los
+data/processed/*.csv # Ignora os CSVs processados
+figures/ # Ignora a pasta de figuras geradas
+models/ # Ignora os modelos treinados
 
-# Pyre type checker
-.pyre/
+# Arquivos de cobertura de teste
+.coverage
+.coverage.*
+htmlcov/ # Pasta gerada pelo pytest-cov
 
-# pytype static type analyzer
-.pytype/
+# Arquivos de IDEs e editores
+.vscode/ # Para VS Code
+.idea/ # Para PyCharm
+*.sublime-project
+*.sublime-workspace
+.DS_Store # Para macOS
 
-# Cython debug symbols
-cython_debug/
-
-.cursorignore
-.cursorindexingignore
-
-# Marimo
-marimo/_static/
-marimo/_lsp/
-__marimo__/
-
-crypto_analysis
-crypto_datasets
-crypto_plots
-*.csv
+# Arquivos de Jupyter Notebook
+.ipynb_checkpoints/

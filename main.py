@@ -48,7 +48,7 @@ def main():
     # --- Configurações Gerais ---
     criptos_para_baixar = [
         "BTC", "ETH", "LTC", "XRP", "BCH",
-        "XMR", "DASH", "ETC", "ZRX", "EOS"
+        "XMR", "DASH", "ETC", "ZRX", "EOS" # 10 moedas conforme o arquivo pdf
     ]
     moeda_cotacao = "USDT"
     timeframe = "d" # Diário
@@ -136,211 +136,212 @@ def main():
                 else:
                     logging.warning(f"Arquivo não encontrado para análise: {caminho_arquivo}")
 
-        if all_dfs:
-            for pair_key, df in all_dfs.items():
-                # Análise Individual
-                stats = calculate_statistics(df)
-                all_stats[pair_key] = stats
-                generate_analysis_plots(df, pair_name=pair_key, save_folder=analysis_folder)
+            if all_dfs:
+                for pair_key, df in all_dfs.items():
+                    # Análise Individual
+                    stats = calculate_statistics(df)
+                    all_stats[pair_key] = stats
+                    generate_analysis_plots(df, pair_name=pair_key, save_folder=analysis_folder)
 
-                # Visualização de Séries Temporais Simples
-                plot_crypto_data(df, pair_name=pair_key, save_folder=plots_folder) # Passa o df diretamente
+                    # Visualização de Séries Temporais Simples
+                    plot_crypto_data(df, pair_name=pair_key, save_folder=plots_folder) # Passa o df diretamente
 
-            # Relatório de Análise Estatística
+                # Relatório de Análise Estatística
+                print("-" * 70)
+                logging.info("Gerando relatório de análise estatística descritiva...")
+                df_stats = pd.DataFrame.from_dict(all_stats, orient='index')
+                df_stats.to_csv(os.path.join(analysis_folder, "relatorio_estatistico_descritivo.csv"))
+                print("\n*** Relatório de Análise Estatística (Preço de Fechamento) ***\n")
+                print(df_stats)
+                print(f"\nGráficos de análise consolidados salvos na pasta: '{analysis_folder}'")
+
+                # Relatório de Análise Comparativa
+                print("-" * 70)
+                logging.info("Gerando relatório de análise de variabilidade comparativa...")
+                df_variability = calculate_comparative_variability(all_dfs)
+                df_variability.to_csv(os.path.join(analysis_folder, "relatorio_comparativo_volatilidade.csv"), index=False)
+                print("\n*** Análise Comparativa de Volatilidade (Ordenado pela Maior Relativa) ***\n")
+                print(df_variability.to_string())
+            else:
+                logging.warning("Nenhum dado disponível para análise estatística ou visualização.")
+
+        # --- Ação: Engenharia de Features ---
+        if args.action in ['all', 'features']:
             print("-" * 70)
-            logging.info("Gerando relatório de análise estatística descritiva...")
-            df_stats = pd.DataFrame.from_dict(all_stats, orient='index')
-            df_stats.to_csv(os.path.join(analysis_folder, "relatorio_estatistico_descritivo.csv"))
-            print("\n*** Relatório de Análise Estatística (Preço de Fechamento) ***\n")
-            print(df_stats)
-            print(f"\nGráficos de análise consolidados salvos na pasta: '{analysis_folder}'")
+            logging.info("Iniciando engenharia de features.")
 
-            # Relatório de Análise Comparativa
-            print("-" * 70)
-            logging.info("Gerando relatório de análise de variabilidade comparativa...")
-            df_variability = calculate_comparative_variability(all_dfs)
-            df_variability.to_csv(os.path.join(analysis_folder, "relatorio_comparativo_volatilidade.csv"), index=False)
-            print("\n*** Análise Comparativa de Volatilidade (Ordenado pela Maior Relativa) ***\n")
-            print(df_variability.to_string())
-        else:
-            logging.warning("Nenhum dado disponível para análise estatística ou visualização.")
+            if not all_dfs and args.action not in ['download', 'analyze']: # Se não baixou/analisou agora, tenta carregar do disco
+                logging.info("Carregando dados existentes para engenharia de features...")
+                for simbolo_base in criptos_para_baixar:
+                    if args.crypto != 'all' and simbolo_base != args.crypto:
+                        continue
+                    nome_arquivo = f"{simbolo_base.upper()}_{moeda_cotacao.upper()}_{timeframe}.csv"
+                    caminho_arquivo = os.path.join(output_folder, nome_arquivo)
+                    if os.path.exists(caminho_arquivo):
+                        df = pd.read_csv(caminho_arquivo)
+                        df['date'] = pd.to_datetime(df['date'])
+                        all_dfs[f"{simbolo_base.upper()}_{moeda_cotacao.upper()}"] = df
+                    else:
+                        logging.warning(f"Arquivo não encontrado para engenharia de features: {caminho_arquivo}")
 
-    # --- Ação: Engenharia de Features ---
-    if args.action in ['all', 'features']:
-        print("-" * 70)
-        logging.info("Iniciando engenharia de features.")
+            if all_dfs:
+                for pair_key, df in all_dfs.items():
+                    if args.crypto != 'all' and pair_key.split('_')[0] != args.crypto:
+                        continue
 
-        if not all_dfs and args.action not in ['download', 'analyze']: # Se não baixou/analisou agora, tenta carregar do disco
-            logging.info("Carregando dados existentes para engenharia de features...")
-            for simbolo_base in criptos_para_baixar:
-                if args.crypto != 'all' and simbolo_base != args.crypto:
-                    continue
-                nome_arquivo = f"{simbolo_base.upper()}_{moeda_cotacao.upper()}_{timeframe}.csv"
-                caminho_arquivo = os.path.join(output_folder, nome_arquivo)
-                if os.path.exists(caminho_arquivo):
-                    df = pd.read_csv(caminho_arquivo)
-                    df['date'] = pd.to_datetime(df['date'])
-                    all_dfs[f"{simbolo_base.upper()}_{moeda_cotacao.upper()}"] = df
-                else:
-                    logging.warning(f"Arquivo não encontrado para engenharia de features: {caminho_arquivo}")
+                    logging.info(f"Criando features para {pair_key}...")
+                    # Exemplo de janelas para médias móveis e desvio padrão
+                    windows = [7, 14, 30]
+                    df_featured = create_moving_average_features(df.copy(), windows) # Passa uma cópia para não modificar o original
 
-        if all_dfs:
-            for pair_key, df in all_dfs.items():
-                if args.crypto != 'all' and pair_key.split('_')[0] != args.crypto:
-                    continue
+                    # Adicionar features técnicas (se implementadas)
+                    df_featured = create_technical_features(df_featured.copy())
 
-                logging.info(f"Criando features para {pair_key}...")
-                # Exemplo de janelas para médias móveis e desvio padrão
-                windows = [7, 14, 30]
-                df_featured = create_moving_average_features(df.copy(), windows) # Passa uma cópia para não modificar o original
-
-                # Adicionar features técnicas (se implementadas)
-                df_featured = create_technical_features(df_featured.copy())
-
-                # Salva o DataFrame com features
-                processed_filename = f"featured_{pair_key}.csv"
-                processed_filepath = os.path.join(processed_data_folder, processed_filename)
-                df_featured.to_csv(processed_filepath, index=False)
-                all_processed_dfs[pair_key] = df_featured
-                logging.info(f"Features para {pair_key} salvas em: {processed_filepath}")
-        else:
-            logging.warning("Nenhum dado disponível para engenharia de features.")
-
-    # --- Ação: Treinamento de Modelos ---
-    if args.action in ['all', 'train']:
-        print("-" * 70)
-        logging.info("Iniciando treinamento e avaliação de modelos.")
-
-        if not all_processed_dfs and args.action not in ['download', 'analyze', 'features']: # Tenta carregar dados processados
-            logging.info("Carregando dados processados para treinamento de modelos...")
-            for simbolo_base in criptos_para_baixar:
-                if args.crypto != 'all' and simbolo_base != args.crypto:
-                    continue
-                pair_key = f"{simbolo_base.upper()}_{moeda_cotacao.upper()}"
-                processed_filename = f"featured_{pair_key}.csv"
-                processed_filepath = os.path.join(processed_data_folder, processed_filename)
-                if os.path.exists(processed_filepath):
-                    df_featured = pd.read_csv(processed_filepath)
-                    df_featured['date'] = pd.to_datetime(df_featured['date'])
+                    # Salva o DataFrame com features
+                    processed_filename = f"featured_{pair_key}.csv"
+                    processed_filepath = os.path.join(processed_data_folder, processed_filename)
+                    df_featured.to_csv(processed_filepath, index=False)
                     all_processed_dfs[pair_key] = df_featured
-                else:
-                    logging.warning(f"Arquivo de features não encontrado para treinamento: {processed_filepath}")
+                    logging.info(f"Features para {pair_key} salvas em: {processed_filepath}")
+            else:
+                logging.warning("Nenhum dado disponível para engenharia de features.")
 
-        if all_processed_dfs:
-            for pair_key, df_featured in all_processed_dfs.items():
-                if args.crypto != 'all' and pair_key.split('_')[0] != args.crypto:
-                    continue
+        # --- Ação: Treinamento de Modelos ---
+        if args.action in ['all', 'train']:
+            print("-" * 70)
+            logging.info("Iniciando treinamento e avaliação de modelos.")
 
-                logging.info(f"Treinando e avaliando modelos para {pair_key}...")
-                # Define as features (X) e o target (y)
-                # Exclua 'date' e 'close' do X, e qualquer coluna que não seja uma feature
-                features = [col for col in df_featured.columns if col not in ['date', 'close']]
-                X = df_featured[features]
-                y = df_featured['close']
+            if not all_processed_dfs and args.action not in ['download', 'analyze', 'features']: # Tenta carregar dados processados
+                logging.info("Carregando dados processados para treinamento de modelos...")
+                for simbolo_base in criptos_para_baixar:
+                    if args.crypto != 'all' and simbolo_base != args.crypto:
+                        continue
+                    pair_key = f"{simbolo_base.upper()}_{moeda_cotacao.upper()}"
+                    processed_filename = f"featured_{pair_key}.csv"
+                    processed_filepath = os.path.join(processed_data_folder, processed_filename)
+                    if os.path.exists(processed_filepath):
+                        df_featured = pd.read_csv(processed_filepath)
+                        df_featured['date'] = pd.to_datetime(df_featured['date'])
+                        all_processed_dfs[pair_key] = df_featured
+                    else:
+                        logging.warning(f"Arquivo de features não encontrado para treinamento: {processed_filepath}")
 
-                # Treina e avalia o modelo especificado
-                train_and_evaluate_model(
-                    X, y,
-                    model_type=args.model,
-                    kfolds=args.kfolds,
-                    pair_name=pair_key,
-                    models_folder=models_folder,
-                    poly_degree=args.poly_degree
-                )
+            if all_processed_dfs:
+                for pair_key, df_featured in all_processed_dfs.items():
+                    if args.crypto != 'all' and pair_key.split('_')[0] != args.crypto:
+                        continue
 
-                # Comparar MLP com outros regressores (se for a ação 'all' ou 'train')
-                if args.action in ['all', 'train']:
-                    logging.info(f"Comparando modelos para {pair_key}...")
-                    compare_models(
+                    logging.info(f"Treinando e avaliando modelos para {pair_key}...")
+                    # Define as features (X) e o target (y)
+                    # Exclua 'date' e 'close' do X, e qualquer coluna que não seja uma feature
+                    features = [col for col in df_featured.columns if col not in ['date', 'close']]
+                    X = df_featured[features]
+                    y = df_featured['close']
+
+                    # Treina e avalia o modelo especificado
+                    train_and_evaluate_model(
                         X, y,
+                        model_type=args.model,
                         kfolds=args.kfolds,
                         pair_name=pair_key,
-                        plots_folder=analysis_folder, # Salva gráficos de comparação aqui
+                        models_folder=models_folder,
                         poly_degree=args.poly_degree
                     )
-        else:
-            logging.warning("Nenhum dado processado disponível para treinamento de modelos.")
 
-    # --- Ação: Simulação de Lucro ---
-    if args.action in ['all', 'profit']:
-        print("-" * 70)
-        logging.info("Iniciando simulação de lucro.")
+                    # Comparar MLP com outros regressores (se for a ação 'all' ou 'train')
+                    if args.action in ['all', 'train']:
+                        logging.info(f"Comparando modelos para {pair_key}...")
+                        compare_models(
+                            X, y,
+                            kfolds=args.kfolds,
+                            pair_name=pair_key,
+                            plots_folder=analysis_folder, # Salva gráficos de comparação aqui
+                            poly_degree=args.poly_degree
+                        )
+            else:
+                logging.warning("Nenhum dado processado disponível para treinamento de modelos.")
 
-        if not all_processed_dfs and args.action not in ['download', 'analyze', 'features', 'train']:
-            logging.info("Carregando dados processados para simulação de lucro...")
-            for simbolo_base in criptos_para_baixar:
-                if args.crypto != 'all' and simbolo_base != args.crypto:
-                    continue
-                pair_key = f"{simbolo_base.upper()}_{moeda_cotacao.upper()}"
-                processed_filename = f"featured_{pair_key}.csv"
-                processed_filepath = os.path.join(processed_data_folder, processed_filename)
-                if os.path.exists(processed_filepath):
-                    df_featured = pd.read_csv(processed_filepath)
-                    df_featured['date'] = pd.to_datetime(df_featured['date'])
-                    all_processed_dfs[pair_key] = df_featured
-                else:
-                    logging.warning(f"Arquivo de features não encontrado para simulação de lucro: {processed_filepath}")
-
-        if all_processed_dfs:
-            for pair_key, df_featured in all_processed_dfs.items():
-                if args.crypto != 'all' and pair_key.split('_')[0] != args.crypto:
-                    continue
-
-                logging.info(f"Simulando lucro para {pair_key}...")
-                # Define as features (X) e o target (y)
-                features = [col for col in df_featured.columns if col not in ['date', 'close']]
-                X = df_featured[features]
-                y = df_featured['close']
-                dates = df_featured['date']
-
-                # Simula o investimento e plota o lucro
-                simulate_investment_and_profit(
-                    X, y, dates,
-                    pair_name=pair_key,
-                    models_folder=models_folder,
-                    profit_plots_folder=profit_plots_folder,
-                    initial_investment=1000.0
-                )
-        else:
-            logging.warning("Nenhum dado processado disponível para simulação de lucro.")
-
-    # --- Ação: Testes Estatísticos Avançados (Hipótese e ANOVA) ---
-    if args.action in ['all', 'stats']:
-        print("-" * 70)
-        logging.info("Iniciando testes estatísticos avançados.")
-
-        if not all_dfs and args.action not in ['download', 'analyze', 'features', 'train', 'profit']:
-            logging.info("Carregando dados existentes para testes estatísticos...")
-            for simbolo_base in criptos_para_baixar:
-                if args.crypto != 'all' and simbolo_base != args.crypto:
-                    continue
-                nome_arquivo = f"{simbolo_base.upper()}_{moeda_cotacao.upper()}_{timeframe}.csv"
-                caminho_arquivo = os.path.join(output_folder, nome_arquivo)
-                if os.path.exists(caminho_arquivo):
-                    df = pd.read_csv(caminho_arquivo)
-                    df['date'] = pd.to_datetime(df['date'])
-                    all_dfs[f"{simbolo_base.upper()}_{moeda_cotacao.upper()}"] = df
-                else:
-                    logging.warning(f"Arquivo não encontrado para testes estatísticos: {caminho_arquivo}")
-
-        if all_dfs:
-            # Teste de Hipótese para cada criptomoeda
+        # --- Ação: Simulação de Lucro ---
+        if args.action in ['all', 'profit']:
             print("-" * 70)
-            logging.info("Realizando teste de hipótese para retorno esperado médio...")
-            for pair_key, df in all_dfs.items():
-                if args.crypto != 'all' and pair_key.split('_')[0] != args.crypto:
-                    continue
-                logging.info(f"Teste de hipótese para {pair_key} com retorno alvo de {args.target_return_percent*100:.2f}%")
-                perform_hypothesis_test(df, pair_key, args.target_return_percent, stats_reports_folder)
+            logging.info("Iniciando simulação de lucro.")
 
-            # Análise ANOVA para comparar retornos médios diários
+            if not all_processed_dfs and args.action not in ['download', 'analyze', 'features', 'train']:
+                logging.info("Carregando dados processados para simulação de lucro...")
+                for simbolo_base in criptos_para_baixar:
+                    if args.crypto != 'all' and simbolo_base != args.crypto:
+                        continue
+                    pair_key = f"{simbolo_base.upper()}_{moeda_cotacao.upper()}"
+                    processed_filename = f"featured_{pair_key}.csv"
+                    processed_filepath = os.path.join(processed_data_folder, processed_filename)
+                    if os.path.exists(processed_filepath):
+                        df_featured = pd.read_csv(processed_filepath)
+                        df_featured['date'] = pd.to_datetime(df_featured['date'])
+                        all_processed_dfs[pair_key] = df_featured
+                    else:
+                        logging.warning(f"Arquivo de features não encontrado para simulação de lucro: {processed_filepath}")
+
+            if all_processed_dfs:
+                for pair_key, df_featured in all_processed_dfs.items():
+                    if args.crypto != 'all' and pair_key.split('_')[0] != args.crypto:
+                        continue
+
+                    logging.info(f"Simulando lucro para {pair_key}...")
+                    # Define as features (X) e o target (y)
+                    features = [col for col in df_featured.columns if col not in ['date', 'close']]
+                    X = df_featured[features]
+                    y = df_featured['close']
+                    dates = df_featured['date']
+
+                    # Simula o investimento e plota o lucro
+                    simulate_investment_and_profit(
+                        X, y, dates,
+                        pair_name=pair_key,
+                        models_folder=models_folder,
+                        profit_plots_folder=profit_plots_folder,
+                        initial_investment=1000.0
+                    )
+            else:
+                logging.warning("Nenhum dado processado disponível para simulação de lucro.")
+
+        # --- Ação: Testes Estatísticos Avançados (Hipótese e ANOVA) ---
+        if args.action in ['all', 'stats']:
             print("-" * 70)
-            logging.info("Realizando análise ANOVA para retornos médios diários...")
-            perform_anova_analysis(all_dfs, stats_reports_folder)
-        else:
-            logging.warning("Nenhum dado disponível para testes estatísticos avançados.")
+            logging.info("Iniciando testes estatísticos avançados.")
 
-    print("\nFLUXO DE TRABALHO CONCLUÍDO!")
+            if not all_dfs and args.action not in ['download', 'analyze', 'features', 'train', 'profit']:
+                logging.info("Carregando dados existentes para testes estatísticos...")
+                for simbolo_base in criptos_para_baixar:
+                    if args.crypto != 'all' and simbolo_base != args.crypto:
+                        continue
+                    nome_arquivo = f"{simbolo_base.upper()}_{moeda_cotacao.upper()}_{timeframe}.csv"
+                    caminho_arquivo = os.path.join(output_folder, nome_arquivo)
+                    if os.path.exists(caminho_arquivo):
+                        df = pd.read_csv(caminho_arquivo)
+                        df['date'] = pd.to_datetime(df['date'])
+                        all_dfs[f"{simbolo_base.upper()}_{moeda_cotacao.upper()}"] = df
+                    else:
+                        logging.warning(f"Arquivo não encontrado para testes estatísticos: {caminho_arquivo}")
 
-if __name__ == '__main__':
-    main()
+            if all_dfs:
+                # Teste de Hipótese para cada criptomoeda
+                print("-" * 70)
+                logging.info("Realizando teste de hipótese para retorno esperado médio...")
+                for pair_key, df in all_dfs.items():
+                    if args.crypto != 'all' and pair_key.split('_')[0] != args.crypto:
+                        continue
+                    logging.info(f"Teste de hipótese para {pair_key} com retorno alvo de {args.target_return_percent*100:.2f}%")
+                    perform_hypothesis_test(df, pair_key, args.target_return_percent, stats_reports_folder)
+
+                # Análise ANOVA para comparar retornos médios diários
+                print("-" * 70)
+                logging.info("Realizando análise ANOVA para retornos médios diários...")
+                perform_anova_analysis(all_dfs, stats_reports_folder)
+            else:
+                logging.warning("Nenhum dado disponível para testes estatísticos avançados.")
+
+        print("\nFLUXO DE TRABALHO CONCLUÍDO!")
+
+    if __name__ == '__main__':
+        main()
+    
