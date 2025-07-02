@@ -65,6 +65,7 @@ O arquivo `requirements.txt` indica os requisitos que o projeto deve conter, que
     pytest
     pytest-cov
     ta
+    requests
     ```
 ## Uso
 

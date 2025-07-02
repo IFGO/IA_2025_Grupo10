@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+import requests
 
 def load_crypto_data(base_symbol: str, quote_symbol: str, timeframe: str, exchange: str = "Poloniex") -> pd.DataFrame:
     try:
@@ -9,9 +10,24 @@ def load_crypto_data(base_symbol: str, quote_symbol: str, timeframe: str, exchan
         print(f"[DEBUG] Verificando caminho: {filepath} | Existe? {os.path.exists(filepath)}")
 
         if not os.path.exists(filepath):
-            return None
+            # Monta a URL para download
+            url = f"https://www.cryptodatadownload.com/cdd/{exchange}_{base_symbol.upper()}{quote_symbol.upper()}_{timeframe}.csv"
+            print(f"[DEBUG] Tentando baixar arquivo de: {url}")
+            try:
+                response = requests.get(url, timeout=30)
+                if response.status_code == 200:
+                    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                    with open(filepath, 'wb') as f:
+                        f.write(response.content)
+                    print(f"[DEBUG] Download concluído e salvo em: {filepath}")
+                else:
+                    print(f"[ERRO] Falha ao baixar arquivo. Status code: {response.status_code}")
+                    return None
+            except Exception as e:
+                print(f"[ERRO] Exceção ao tentar baixar arquivo: {e}")
+                return None
 
-        # ← skip a linha de comentário e trata BOM invisível
+        # escapa a linha de comentário e trata BOM invisível
         df = pd.read_csv(filepath, skiprows=1, encoding='utf-8-sig')
 
         # Mostrar as colunas reais lidas
