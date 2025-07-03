@@ -32,15 +32,22 @@ def load_crypto_data(
     aplicando as melhores práticas de organização e manipulação de arquivos.
     """
     try:
-        filename = f"{base_symbol.upper()}{quote_symbol.upper()}_{timeframe}.csv"
         data_dir = Path("data/raw")
-        filepath = data_dir / filename
+
+        # Arquivo salvo localmente
+        filename_local = f"{base_symbol.upper()}_{quote_symbol.upper()}_{timeframe}.csv"
+        filepath = data_dir / filename_local
+
+        # Nome do arquivo na URL
+        filename_remote = f"{base_symbol.upper()}{quote_symbol.upper()}_{timeframe}.csv"
+        url = f"https://www.cryptodatadownload.com/cdd/{exchange}_{filename_remote}"
+
 
         logging.debug(f"Verificando caminho: {filepath} | Existe? {filepath.exists()}")
 
         if not filepath.exists():
             logging.info(f"Arquivo '{filepath}' não encontrado. Tentando download...")
-            url = f"https://www.cryptodatadownload.com/cdd/{exchange}_{filename}"
+            url = f"https://www.cryptodatadownload.com/cdd/{exchange}_{filename_remote}"
 
             try:
                 response = requests.get(url, timeout=30)
