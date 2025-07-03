@@ -13,6 +13,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
+from sklearn.pipeline import Pipeline
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 def train_and_evaluate_model(
@@ -258,7 +259,7 @@ def compare_models(
             try:
                 # Treina o modelo no conjunto completo para obter os coeficientes
                 model.fit(X_full, y_full)
-                if isinstance(model, make_pipeline): # Para Polynomial Regression
+                if isinstance(model, Pipeline): # Para Polynomial Regression
                     linear_model = model.named_steps['linearregression']
                     feature_names = model.named_steps['polynomialfeatures'].get_feature_names_out(X.columns)
                 else: # Para Linear Regression
@@ -278,7 +279,7 @@ def compare_models(
         if 'Linear' in model_name:
             try:
                 model.fit(X_full, y_full) # Treina novamente para garantir coeficientes
-                if isinstance(model, make_pipeline):
+                if isinstance(model, Pipeline):
                     linear_model = model.named_steps['linearregression']
                     poly_features = model.named_steps['polynomialfeatures']
                     feature_names = poly_features.get_feature_names_out(X.columns)
