@@ -74,7 +74,7 @@ def perform_hypothesis_test(
 
     # Salvar resultados em um arquivo de texto
     report_path = os.path.join(save_folder, f"hypothesis_test_report_{pair_name.replace(' ', '_')}.txt")
-    with open(report_path, 'w') as f:
+    with open(report_path, 'w', encoding='utf-8') as f:
         f.write(f"Relatório de Teste de Hipótese para {pair_name}\n")
         f.write("-" * 50 + "\n")
         f.write(f"Hipótese Nula (H0): Retorno médio diário <= {target_return_percent*100:.2f}%\n")
