@@ -14,6 +14,23 @@ from src.model_training import train_and_evaluate_model, compare_models # Novos 
 from src.prediction_profit import simulate_investment_and_profit # Novo módulo
 from src.statistical_tests import perform_hypothesis_test, perform_anova_analysis # Novo módulo
 
+#Parametros vindos do config.py
+from config import (
+    CRIPTOS_PARA_BAIXAR as criptos_para_baixar,
+    MOEDA_COTACAO as moeda_cotacao,
+    TIMEFRAME as timeframe,
+    OUTPUT_FOLDER as output_folder,
+    PROCESSED_DATA_FOLDER as processed_data_folder,
+    MODELS_FOLDER as models_folder,
+    PLOTS_FOLDER as plots_folder,
+    ANALYSIS_FOLDER as analysis_folder,
+    PROFIT_PLOTS_FOLDER as profit_plots_folder,
+    STATS_REPORTS_FOLDER as stats_reports_folder,
+    DEFAULT_KFOLDS as default_kfolds,
+    DEFAULT_TARGET_RETURN_PERCENT as default_target_return_percent,
+    DEFAULT_POLY_DEGREE as default_poly_degree
+)
+
 warnings.filterwarnings(
     "ignore",
     category=UserWarning,
@@ -33,8 +50,10 @@ def main():
     Função principal que orquestra o download, a análise, a engenharia de features,
     o treinamento de modelos, a simulação de lucro e os testes estatísticos.
     """
+
     setup_logging()
 
+    
     parser = argparse.ArgumentParser(description="Análise e Previsão de Preços de Criptomoedas.")
     parser.add_argument('--action', type=str, default='all',
                         choices=['all', 'download', 'analyze', 'features', 'train', 'profit', 'stats'],
@@ -44,35 +63,19 @@ def main():
     parser.add_argument('--model', type=str, default='MLP',
                         choices=['MLP', 'Linear', 'Polynomial', 'RandomForest'],
                         help="Modelo a ser usado para treinamento (MLP, Linear, Polynomial, RandomForest).")
-    parser.add_argument('--kfolds', type=int, default=5,
+    parser.add_argument('--kfolds', type=int, default=default_kfolds,
                         help="Número de folds para K-fold cross-validation.")
-    parser.add_argument('--target_return_percent', type=float, default=0.01,
+    parser.add_argument('--target_return_percent', type=float, default=default_target_return_percent,
                         help="Retorno esperado médio (%) para o teste de hipótese (ex: 0.01 para 1%).")
-    parser.add_argument('--poly_degree', type=int, default=2,
+    parser.add_argument('--poly_degree', type=int, default=default_poly_degree,
                         help="Grau máximo para a regressão polinomial (de 2 a 10).")
     parser.add_argument('--force_download', action='store_true',
                         help="Força o download dos dados mesmo que o arquivo já exista.")
-
     args = parser.parse_args()
 
     print(f">>> Executando ação: {args.action} para crypto: {args.crypto}")
 
-    # --- Configurações Gerais ---
-    criptos_para_baixar = [
-        "BTC", "ETH", "LTC", "XRP", "BCH",
-        "XMR", "DASH", "ETC", "ZRX", "EOS" 
-    ]
-    moeda_cotacao = "USDT"
-    timeframe = "d" # Diário
-
-    output_folder = "data/raw"
-    plots_folder = "figures/simple_plots"
-    analysis_folder = "figures/analysis_plots"
-    processed_data_folder = "data/processed"
-    models_folder = "models"
-    profit_plots_folder = "figures/profit_plots"
-    stats_reports_folder = "figures/statistical_reports"
-
+   
     # Criação de pastas se não existirem
     os.makedirs(output_folder, exist_ok=True)
     os.makedirs(plots_folder, exist_ok=True)
@@ -354,7 +357,23 @@ def main():
                 # Análise ANOVA para comparar retornos médios diários
                 print("-" * 70)
                 logging.info("Realizando análise ANOVA para retornos médios diários...")
-                perform_anova_analysis(all_dfs, stats_reports_folder)
+                
+                if not all_processed_dfs:
+                    logging.info("Carregando dados processados para testes estatísticos (ANOVA)...")
+                    for simbolo_base in criptos_para_baixar:
+                        if args.crypto != 'all' and simbolo_base != args.crypto:
+                            continue
+                        pair_key = f"{simbolo_base.upper()}_{moeda_cotacao.upper()}"
+                        processed_filename = f"featured_{pair_key}.csv"
+                        processed_filepath = os.path.join(processed_data_folder, processed_filename)
+                        if os.path.exists(processed_filepath):
+                            df_featured = pd.read_csv(processed_filepath)
+                            df_featured['date'] = pd.to_datetime(df_featured['date'])
+                            all_processed_dfs[pair_key] = df_featured
+                        else:
+                            logging.warning(f"Arquivo de features não encontrado para ANOVA: {processed_filepath}")
+                
+                perform_anova_analysis(all_processed_dfs, stats_reports_folder)
             else:
                 logging.warning("Nenhum dado disponível para testes estatísticos avançados.")
 

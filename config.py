@@ -1,12 +1,12 @@
 # Este arquivo será usado para armazenar configurações globais do projeto.
 
 # Exemplo: Lista de criptomoedas a serem baixadas
-CRYPTOS_TO_DOWNLOAD = [
+CRIPTOS_PARA_BAIXAR = [
         "BTC", "ETH", "LTC", "XRP", "BCH",
         "XMR", "DASH", "ETC", "ZRX", "EOS"
     ]
 
-QUOTE_CURRENCY = "USDT"
+MOEDA_COTACAO = "USDT"
 TIMEFRAME = "d" # Diário
 
 # Pastas de saída

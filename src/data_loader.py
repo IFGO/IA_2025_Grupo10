@@ -43,8 +43,7 @@ def load_crypto_data(
         url = f"https://www.cryptodatadownload.com/cdd/{exchange}_{filename_remote}"
 
 
-        logging.debug(f"Verificando caminho: {filepath} | Existe? {filepath.exists()}")
-
+        
         if not filepath.exists():
             logging.info(f"Arquivo '{filepath}' não encontrado. Tentando download...")
             url = f"https://www.cryptodatadownload.com/cdd/{exchange}_{filename_remote}"

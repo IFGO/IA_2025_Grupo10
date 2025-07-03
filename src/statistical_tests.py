@@ -8,85 +8,55 @@ from typing import Dict
 from scipy import stats
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
-def perform_hypothesis_test(
-    df: pd.DataFrame,
-    pair_name: str,
-    target_return_percent: float,
-    save_folder: str,
-    alpha: float = 0.05
-):
+def perform_hypothesis_test(df: pd.DataFrame, pair_name: str, target_return_percent: float, output_dir: str) -> None:
     """
-    Realiza um teste de hipótese para verificar se o retorno esperado médio
-    é superior ou igual a um valor definido pelo usuário (x%).
-
-    H0: Retorno médio <= x%
-    H1: Retorno médio > x%
-
-    Args:
-        df (pd.DataFrame): DataFrame com os dados da criptomoeda, incluindo 'close'.
-        pair_name (str): Nome do par de criptomoedas.
-        target_return_percent (float): O valor x% (em decimal) a ser testado.
-        save_folder (str): Pasta para salvar os relatórios.
-        alpha (float): Nível de significância (padrão 0.05).
+    Realiza um teste de hipótese unilateral à direita sobre o retorno médio diário da criptomoeda.
+    H0: O retorno médio diário <= target_return_percent
+    H1: O retorno médio diário > target_return_percent
     """
-    logging.info(f"Realizando teste de hipótese para {pair_name}...")
+    from scipy import stats
+    import numpy as np
+    import os
 
-    if df.empty or 'close' not in df.columns:
-        logging.warning(f"Dados inválidos para teste de hipótese para {pair_name}.")
+    # Calcula os retornos diários e remove NaNs
+    returns = df['close'].pct_change().dropna()
+
+    # Verificação de amostra válida
+    if returns.empty or returns.std() == 0 or len(returns) < 2:
+        logging.warning(f"[{pair_name}] Dados insuficientes ou desvio padrão nulo para teste de hipótese.")
         return
 
-    # Calcula os retornos diários
-    df['daily_return'] = df['close'].pct_change().dropna()
+    # Estatísticas básicas
+    sample_mean = returns.mean()
+    sample_std = returns.std()
+    n = len(returns)
 
-    if df['daily_return'].empty:
-        logging.warning(f"Não há retornos diários para {pair_name}. Impossível realizar o teste de hipótese.")
-        return
+    # Teste t unilateral à direita (greater)
+    t_statistic, p_value = stats.ttest_1samp(returns, popmean=target_return_percent, alternative='greater')
 
-    sample_mean = df['daily_return'].mean()
-    sample_std = df['daily_return'].std()
-    n = len(df['daily_return'])
+    alpha = 0.05
+    reject_null = p_value < alpha
 
-    # Teste t de uma amostra (one-sample t-test)
-    # H0: mu <= target_return_percent
-    # H1: mu > target_return_percent (teste unilateral à direita)
-    # stats.ttest_1samp retorna o p-valor para um teste bicaudal.
-    # Para unilateral à direita, p_unilateral = p_bicaudal / 2 se t > 0, ou 1 - p_bicaudal / 2 se t < 0.
-    # Ou simplesmente 1 - cdf(t) para t-statistic.
+    # Formatação final do texto
+    report_text = f"""Relatório de Teste de Hipótese para {pair_name}
+--------------------------------------------------
+Hipótese Nula (H0): Retorno médio diário <= {target_return_percent*100:.2f}%
+Hipótese Alternativa (H1): Retorno médio diário > {target_return_percent*100:.2f}%
+Nível de Significância (alpha): {alpha}
 
-    t_statistic, p_value_two_sided = stats.ttest_1samp(df['daily_return'], popmean=target_return_percent, alternative='greater')
+Retorno Médio da Amostra: {sample_mean:.6f}
+Desvio Padrão da Amostra: {sample_std:.6f}
+Tamanho da Amostra (n): {n}
+Estatística t: {t_statistic:.6f}
+P-valor: {p_value:.6f}
 
-    # Para um teste unilateral à direita, o p-valor é diretamente dado por 'alternative='greater''
-    p_value = p_value_two_sided
+Conclusão: {"Rejeitamos a hipótese nula. Há evidências significativas para afirmar que o retorno médio diário de " + pair_name + " é SUPERIOR a " + f"{target_return_percent*100:.2f}%." if reject_null else "Não rejeitamos a hipótese nula. Não há evidências significativas para afirmar que o retorno médio diário de " + pair_name + " é SUPERIOR a " + f"{target_return_percent*100:.2f}%."}
+"""
 
-    logging.info(f"  --- Teste de Hipótese para {pair_name} ---")
-    logging.info(f"  Retorno Médio da Amostra: {sample_mean:.6f}")
-    logging.info(f"  Retorno Alvo (x%): {target_return_percent:.6f}")
-    logging.info(f"  Estatística t: {t_statistic:.4f}")
-    logging.info(f"  P-valor: {p_value:.4f}")
-    logging.info(f"  Nível de Significância (alpha): {alpha}")
-
-    conclusion = ""
-    if p_value < alpha:
-        conclusion = f"Rejeitamos a hipótese nula. Há evidências significativas para afirmar que o retorno médio diário de {pair_name} é SUPERIOR a {target_return_percent*100:.2f}%."
-    else:
-        conclusion = f"Não rejeitamos a hipótese nula. Não há evidências significativas para afirmar que o retorno médio diário de {pair_name} é SUPERIOR a {target_return_percent*100:.2f}%."
-    logging.info(f"  Conclusão: {conclusion}")
-
-    # Salvar resultados em um arquivo de texto
-    report_path = os.path.join(save_folder, f"hypothesis_test_report_{pair_name.replace(' ', '_')}.txt")
-    with open(report_path, 'w', encoding='utf-8') as f:
-        f.write(f"Relatório de Teste de Hipótese para {pair_name}\n")
-        f.write("-" * 50 + "\n")
-        f.write(f"Hipótese Nula (H0): Retorno médio diário <= {target_return_percent*100:.2f}%\n")
-        f.write(f"Hipótese Alternativa (H1): Retorno médio diário > {target_return_percent*100:.2f}%\n")
-        f.write(f"Nível de Significância (alpha): {alpha}\n\n")
-        f.write(f"Retorno Médio da Amostra: {sample_mean:.6f}\n")
-        f.write(f"Desvio Padrão da Amostra: {sample_std:.6f}\n")
-        f.write(f"Tamanho da Amostra (n): {n}\n")
-        f.write(f"Estatística t: {t_statistic:.4f}\n")
-        f.write(f"P-valor: {p_value:.4f}\n\n")
-        f.write(f"Conclusão: {conclusion}\n")
-    logging.info(f"Relatório de teste de hipótese salvo em: {report_path}")
+    # Salvar arquivo
+    report_path = os.path.join(output_dir, f"hypothesis_test_report_{pair_name}.txt")
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write(report_text)
 
 
 def perform_anova_analysis(
