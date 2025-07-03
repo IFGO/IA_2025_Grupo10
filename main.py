@@ -3,6 +3,7 @@ import os
 import logging
 import argparse
 from typing import List, Dict, Any, Optional
+import warnings
 
 # --- Importações dos Módulos Personalizados ---
 from src.data_loader import load_crypto_data
@@ -12,6 +13,12 @@ from src.feature_engineering import create_moving_average_features, create_techn
 from src.model_training import train_and_evaluate_model, compare_models # Novos módulos
 from src.prediction_profit import simulate_investment_and_profit # Novo módulo
 from src.statistical_tests import perform_hypothesis_test, perform_anova_analysis # Novo módulo
+
+warnings.filterwarnings(
+    "ignore",
+    category=UserWarning,
+    message="X does not have valid feature names"
+)
 
 
 def setup_logging(level=logging.ERROR):
@@ -43,6 +50,8 @@ def main():
                         help="Retorno esperado médio (%) para o teste de hipótese (ex: 0.01 para 1%).")
     parser.add_argument('--poly_degree', type=int, default=2,
                         help="Grau máximo para a regressão polinomial (de 2 a 10).")
+    parser.add_argument('--force_download', action='store_true',
+                        help="Força o download dos dados mesmo que o arquivo já exista.")
 
     args = parser.parse_args()
 
@@ -51,7 +60,7 @@ def main():
     # --- Configurações Gerais ---
     criptos_para_baixar = [
         "BTC", "ETH", "LTC", "XRP", "BCH",
-        "XMR", "DASH", "ETC", "ZRX", "EOS" # 10 moedas conforme o arquivo pdf
+        "XMR", "DASH", "ETC", "ZRX", "EOS" 
     ]
     moeda_cotacao = "USDT"
     timeframe = "d" # Diário
@@ -86,6 +95,23 @@ def main():
         for simbolo_base in criptos_para_baixar:
             if args.crypto != 'all' and simbolo_base != args.crypto:
                 continue # Pula se uma criptomoeda específica foi solicitada e não é esta
+
+            nome_arquivo = f"{simbolo_base.upper()}_{moeda_cotacao.upper()}_{timeframe}.csv"
+            caminho_arquivo = os.path.join(output_folder, nome_arquivo)
+            if not args.force_download and os.path.exists(caminho_arquivo):
+                print(f"[INFO] Arquivo já existe e --force_download não foi especificado: {caminho_arquivo}")
+                df = pd.read_csv(caminho_arquivo)
+                all_dfs[f"{simbolo_base.upper()}_{moeda_cotacao.upper()}"] = df
+                log_info = {
+                    "Par de Moedas": f"{simbolo_base.upper()}/{moeda_cotacao.upper()}",
+                    "Status": "Já Existente", "Total de Registros": len(df),
+                    "Data de Início": df['date'].min() if 'date' in df.columns else 'N/A',
+                    "Data de Fim": df['date'].max() if 'date' in df.columns else 'N/A',
+                    "Preço Médio (Close)": round(df['close'].mean(), 4) if 'close' in df.columns else 0.0,
+                    "Arquivo Salvo": nome_arquivo
+                }
+                summary_logs.append(log_info)
+                continue
 
             df = load_crypto_data(base_symbol=simbolo_base, quote_symbol=moeda_cotacao, timeframe=timeframe)
 
@@ -357,4 +383,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-    
