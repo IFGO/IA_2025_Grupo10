@@ -114,8 +114,7 @@ def create_technical_features(df: pd.DataFrame) -> pd.DataFrame:
         # OBV não tem janela, mas pode ter NaNs se 'volume' ou 'close' tiverem
         df_featured['obv'] = ta.volume.OnBalanceVolumeIndicator(close=df_featured['close'], volume=df_featured['volume']).on_balance_volume()
     else:
-        logging.warning("Colunas 'open', 'high', 'low', 'volume' não encontradas para criar todas as features técnicas. Algumas features serão omitidas.")
-
+        logging.warning("Colunas 'open', 'high', 'low', 'volume' não encontradas para criar todas as features técnicas. Algumas features serão omitidas. Colunas disponíveis: %s", df_featured.columns.tolist())
 
     df_featured = df_featured.dropna() # Alterado para não usar inplace=True
     return df_featured

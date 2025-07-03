@@ -33,8 +33,8 @@ def load_crypto_data(base_symbol: str, quote_symbol: str, timeframe: str, exchan
         # Mostrar as colunas reais lidas
         print("[DEBUG] Colunas lidas do CSV:", df.columns.tolist())
 
-        # Padronizar nomes
-        df.columns = [col.strip().lower() for col in df.columns]
+        # Padronizar nomes (minúsculo, sem espaços, troca espaços por underline)
+        df.columns = [col.strip().lower().replace(' ', '_') for col in df.columns]
 
         print("[DEBUG] Colunas normalizadas:", df.columns.tolist())
 

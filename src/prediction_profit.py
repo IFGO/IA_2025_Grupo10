@@ -58,7 +58,8 @@ def simulate_investment_and_profit(
         logging.error(f"Nenhum modelo encontrado para simular lucro para {pair_name}. Treine os modelos primeiro.")
         return
 
-    profit_evolution = pd.DataFrame({'date': data_df['date']})
+    # Alinhar o DataFrame de datas já no início, para todos os modelos
+    profit_evolution = pd.DataFrame({'date': data_df['date'].iloc[1:].reset_index(drop=True)})
 
     for model_key, model in loaded_models.items():
         logging.info(f"Executando simulação para o modelo: {model_key}")
@@ -90,16 +91,8 @@ def simulate_investment_and_profit(
 
             daily_balances.append(current_balance)
 
-        # Ajusta o tamanho da lista de saldos para corresponder ao DataFrame original
-        # O primeiro saldo é o investimento inicial, e os subsequentes são os saldos diários.
-        # Se houver N dias de dados, teremos N saldos (saldo inicial + N-1 saldos diários)
-        # data_df tem N linhas (N dias), daily_balances terá N+1 elementos (initial + N dias de operação)
-        # Precisamos alinhar os saldos com as datas. O saldo do dia 'i' é o resultado da operação do dia 'i-1' para o dia 'i'.
-        # O primeiro elemento de daily_balances é o investimento inicial, que corresponde ao dia 0.
-        # Os saldos subsequentes correspondem aos resultados do fechamento de cada dia.
-        # Portanto, o último saldo em daily_balances corresponde ao último dia de dados.
-        # A lista daily_balances terá len(data_df) + 1 elementos. Precisamos pegar os últimos len(data_df) elementos.
-        profit_evolution[f'balance_{model_key}'] = daily_balances[1:] # Ignora o primeiro (investimento inicial) e alinha com as datas
+        # Adiciona a coluna de saldo para o modelo atual
+        profit_evolution[f'balance_{model_key}'] = daily_balances[1:]
 
     # Plotar o gráfico de evolução do lucro (Requisito 9f)
     plt.figure(figsize=(16, 9))
