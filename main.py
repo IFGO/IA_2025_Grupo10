@@ -124,7 +124,6 @@ def main():
             if df is not None and not df.empty:
                 nome_arquivo = f"{simbolo_base.upper()}_{moeda_cotacao.upper()}_{timeframe}.csv"
                 caminho_arquivo = os.path.join(output_folder, nome_arquivo)
-                print(f"[DEBUG] Verificando caminho: {caminho_arquivo} | Existe? {os.path.exists(caminho_arquivo)}")
                 df.to_csv(caminho_arquivo, index=False)
 
                 log_info.update({
@@ -143,7 +142,7 @@ def main():
         print("-" * 70)
         logging.info("Gerando relatório de resumo do download...")
         df_summary = pd.DataFrame(summary_logs)
-        df_summary.to_csv(os.path.join(output_folder, "relatorio_download.csv"), index=False)
+        # df_summary.to_csv(os.path.join(output_folder, "relatorio_download.csv"), index=False)
         print("\n*** Relatório Final do Download ***\n")
         print(df_summary.to_string())
 
@@ -152,52 +151,34 @@ def main():
         print("-" * 70)
         logging.info("Iniciando análises estatísticas e geração de gráficos.")
 
-        if not all_dfs and args.action != 'download': # Se não baixou agora, tenta carregar do disco
-            logging.info("Carregando dados existentes para análise...")
-            for simbolo_base in criptos_para_baixar:
-                if args.crypto != 'all' and simbolo_base != args.crypto:
-                    continue
-                nome_arquivo = f"{simbolo_base.upper()}_{moeda_cotacao.upper()}_{timeframe}.csv"
-                caminho_arquivo = os.path.join(output_folder, nome_arquivo)
-                print(f"[DEBUG] Verificando caminho: {caminho_arquivo} | Existe? {os.path.exists(caminho_arquivo)}")
-                if os.path.exists(caminho_arquivo):
-                    df = load_crypto_data(simbolo_base, moeda_cotacao, timeframe)
-                    if df is not None:
-                        all_dfs[f"{simbolo_base.upper()}_{moeda_cotacao.upper()}"] = df
-                    else:
-                        logging.warning(f"Falha ao carregar dados para análise: {simbolo_base}")
-                else:
-                    logging.warning(f"Arquivo não encontrado para análise: {caminho_arquivo}")
+        if args.action in ['all', 'analyze']:
+            print("-" * 70)
+            logging.info("Iniciando análises estatísticas e geração de gráficos.")
 
-            if all_dfs:
-                for pair_key, df in all_dfs.items():
-                    # Análise Individual
-                    stats = calculate_statistics(df)
-                    all_stats[pair_key] = stats
-                    generate_analysis_plots(df, pair_name=pair_key, save_folder=analysis_folder)
+            for pair_key, df in all_dfs.items():
+                # Análise Individual
+                stats = calculate_statistics(df)
+                all_stats[pair_key] = stats
+                generate_analysis_plots(df, pair_name=pair_key, save_folder=analysis_folder)
+                plot_crypto_data(df, pair_name=pair_key, save_folder=plots_folder)
 
-                    # Visualização de Séries Temporais Simples
-                    plot_crypto_data(df, pair_name=pair_key, save_folder=plots_folder) # Passa o df diretamente
+            # Relatório de Análise Estatística
+            print("-" * 70)
+            logging.info("Gerando relatório de análise estatística descritiva...")
+            df_stats = pd.DataFrame.from_dict(all_stats, orient='index')
+            df_stats.to_csv(os.path.join(stats_reports_folder, "relatorio_estatistico_descritivo.csv"), index_label="Métrica")
+            print("\n*** Relatório de Análise Estatística (Preço de Fechamento) ***\n")
+            print(df_stats)
+            print(f"\nGráficos de análise consolidados salvos na pasta: '{analysis_folder}'")
 
-                # Relatório de Análise Estatística
-                print("-" * 70)
-                logging.info("Gerando relatório de análise estatística descritiva...")
-                df_stats = pd.DataFrame.from_dict(all_stats, orient='index')
-                df_stats.to_csv(os.path.join(stats_reports_folder, "relatorio_estatistico_descritivo.csv"), index_label="Métrica")
-                print("\n*** Relatório de Análise Estatística (Preço de Fechamento) ***\n")
-                print(df_stats)
-                print(f"\nGráficos de análise consolidados salvos na pasta: '{analysis_folder}'")
-
-                # Relatório de Análise Comparativa
-                print("-" * 70)
-                logging.info("Gerando relatório de análise de variabilidade comparativa...")
-                df_variability = calculate_comparative_variability(all_dfs)
-                df_variability.to_csv(os.path.join(stats_reports_folder, "relatorio_comparativo_volatilidade.csv"), index=False)
-                print("\n*** Análise Comparativa de Volatilidade (Ordenado pela Maior Relativa) ***\n")
-                print(df_variability.to_string())
-            else:
-                logging.warning("Nenhum dado disponível para análise estatística ou visualização.")
-
+            # Relatório de Análise Comparativa
+            print("-" * 70)
+            logging.info("Gerando relatório de análise de variabilidade comparativa...")
+            df_variability = calculate_comparative_variability(all_dfs)
+            df_variability.to_csv(os.path.join(stats_reports_folder, "relatorio_comparativo_volatilidade.csv"), index=False)
+            print("\n*** Análise Comparativa de Volatilidade (Ordenado pela Maior Relativa) ***\n")
+            print(df_variability.to_string())
+        
         # --- Ação: Engenharia de Features ---
         if args.action in ['all', 'features']:
             print("-" * 70)
@@ -210,7 +191,6 @@ def main():
                         continue
                     nome_arquivo = f"{simbolo_base.upper()}_{moeda_cotacao.upper()}_{timeframe}.csv"
                     caminho_arquivo = os.path.join(output_folder, nome_arquivo)
-                    print(f"[DEBUG] Verificando caminho: {caminho_arquivo} | Existe? {os.path.exists(caminho_arquivo)}")
                     if os.path.exists(caminho_arquivo):
                         df = load_crypto_data(simbolo_base, moeda_cotacao, timeframe)
                         if df is not None:
@@ -352,7 +332,6 @@ def main():
                         continue
                     nome_arquivo = f"{simbolo_base.upper()}_{moeda_cotacao.upper()}_{timeframe}.csv"
                     caminho_arquivo = os.path.join(output_folder, nome_arquivo)
-                    print(f"[DEBUG] Verificando caminho: {caminho_arquivo} | Existe? {os.path.exists(caminho_arquivo)}")
                     if os.path.exists(caminho_arquivo):
                         df = load_crypto_data(simbolo_base, moeda_cotacao, timeframe)
                         if df is not None:
