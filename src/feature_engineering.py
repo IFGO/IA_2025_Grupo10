@@ -77,17 +77,33 @@ def create_technical_features(df: pd.DataFrame) -> pd.DataFrame:
     # Certifique-se de que as colunas 'high', 'low', 'open', 'volume' existem no seu DataFrame
     # Se não existirem, você precisará adaptar ou remover essas features.
 
-    required_cols_for_ta = ['open', 'high', 'low', 'close', 'volume']
-    if all(col in df_featured.columns for col in required_cols_for_ta):
-        # RSI (Relative Strength Index)
-        if len(df_featured) >= 14: # RSI default window is 14
+    required_cols = ['open', 'high', 'low', 'close']
+    missing_cols = [col for col in required_cols if col not in df_featured.columns]
+
+    # Procurar coluna de volume com nomes alternativos
+    volume_col = None
+    for candidate in ['volume', 'volume_eth', 'volume_usdt']:
+        if candidate in df_featured.columns:
+            volume_col = candidate
+            break
+
+    if missing_cols or volume_col is None:
+        logging.warning(
+            "Colunas ausentes para cálculo técnico: %s. Colunas de volume disponíveis: %s. Colunas no DataFrame: %s",
+            missing_cols,
+            [col for col in df_featured.columns if 'volume' in col],
+            df_featured.columns.tolist()
+        )
+    else:
+        # RSI
+        if len(df_featured) >= 14:
             df_featured['rsi'] = ta.momentum.RSIIndicator(close=df_featured['close'], window=14).rsi()
         else:
             df_featured['rsi'] = np.nan
             logging.warning("DataFrame muito curto para calcular RSI.")
 
-        # MACD (Moving Average Convergence Divergence) - default fast=12, slow=26
-        if len(df_featured) >= 26: # MACD needs at least 26 data points
+        # MACD
+        if len(df_featured) >= 26:
             macd = ta.trend.MACD(close=df_featured['close'])
             df_featured['macd'] = macd.macd()
             df_featured['macd_signal'] = macd.macd_signal()
@@ -98,23 +114,21 @@ def create_technical_features(df: pd.DataFrame) -> pd.DataFrame:
             df_featured['macd_diff'] = np.nan
             logging.warning("DataFrame muito curto para calcular MACD.")
 
-        # Bollinger Bands - default window=20
+        # Bollinger Bands
         if len(df_featured) >= 20:
-            bollinger = ta.volatility.BollingerBands(close=df_featured['close'], window=20, window_dev=2)
-            df_featured['bb_upper'] = bollinger.bollinger_hband()
-            df_featured['bb_lower'] = bollinger.bollinger_lband()
-            df_featured['bb_mavg'] = bollinger.bollinger_mavg()
+            boll = ta.volatility.BollingerBands(close=df_featured['close'], window=20)
+            df_featured['bb_upper'] = boll.bollinger_hband()
+            df_featured['bb_lower'] = boll.bollinger_lband()
+            df_featured['bb_mavg'] = boll.bollinger_mavg()
         else:
-            df_featured['bb_upper'] = np.nan
-            df_featured['bb_lower'] = np.nan
-            df_featured['bb_mavg'] = np.nan
+            df_featured['bb_upper'] = df_featured['bb_lower'] = df_featured['bb_mavg'] = np.nan
             logging.warning("DataFrame muito curto para calcular Bollinger Bands.")
 
-        # On-Balance Volume (OBV)
-        # OBV não tem janela, mas pode ter NaNs se 'volume' ou 'close' tiverem
-        df_featured['obv'] = ta.volume.OnBalanceVolumeIndicator(close=df_featured['close'], volume=df_featured['volume']).on_balance_volume()
-    else:
-        logging.warning("Colunas 'open', 'high', 'low', 'volume' não encontradas para criar todas as features técnicas. Algumas features serão omitidas. Colunas disponíveis: %s", df_featured.columns.tolist())
+        # OBV
+        df_featured['obv'] = ta.volume.OnBalanceVolumeIndicator(
+            close=df_featured['close'],
+            volume=df_featured[volume_col]
+        ).on_balance_volume()
 
     df_featured = df_featured.dropna() # Alterado para não usar inplace=True
     return df_featured

@@ -27,8 +27,13 @@ def load_crypto_data(base_symbol: str, quote_symbol: str, timeframe: str, exchan
                 print(f"[ERRO] Exceção ao tentar baixar arquivo: {e}")
                 return None
 
-        # escapa a linha de comentário e trata BOM invisível
-        df = pd.read_csv(filepath, skiprows=1, encoding='utf-8-sig')
+        # Verifica se a primeira linha é cabeçalho ou metadado
+        with open(filepath, 'r', encoding='utf-8-sig') as f:
+            first_line = f.readline()
+            skip = 1 if not first_line.lower().startswith('date') else 0
+
+        # Reabre o arquivo e lê com ou sem skiprows conforme o conteúdo
+        df = pd.read_csv(filepath, skiprows=skip, encoding='utf-8-sig')
 
         # Mostrar as colunas reais lidas
         print("[DEBUG] Colunas lidas do CSV:", df.columns.tolist())
