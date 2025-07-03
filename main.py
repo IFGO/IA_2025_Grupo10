@@ -14,7 +14,7 @@ from src.prediction_profit import simulate_investment_and_profit # Novo módulo
 from src.statistical_tests import perform_hypothesis_test, perform_anova_analysis # Novo módulo
 
 
-def setup_logging(level=logging.INFO):
+def setup_logging(level=logging.ERROR):
     logging.basicConfig(
         level=level,
         format='%(asctime)s - %(levelname)s - %(message)s',

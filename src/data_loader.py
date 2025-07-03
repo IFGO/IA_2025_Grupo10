@@ -1,61 +1,62 @@
 import pandas as pd
-import os
 import requests
+import logging
+from pathlib import Path
 
-def load_crypto_data(base_symbol: str, quote_symbol: str, timeframe: str, exchange: str = "Poloniex") -> pd.DataFrame:
+def _process_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Função auxiliar para limpar, padronizar e processar o DataFrame.
+    """
+    df.columns = df.columns.str.strip().str.lower().str.replace(' ', '_')
+    
+    if 'date' not in df.columns:
+        raise ValueError(f"Coluna 'date' não encontrada. Colunas: {df.columns.tolist()}")
+
+    df['date'] = pd.to_datetime(df['date'], errors='coerce')
+    
+    cols_to_drop = ['unix', 'symbol', 'tradecount']
+    df = df.drop(columns=cols_to_drop, errors='ignore')
+    
+    return df.dropna(subset=['date']).sort_values('date')
+
+def load_crypto_data(
+    base_symbol: str, 
+    quote_symbol: str, 
+    timeframe: str, 
+    exchange: str = "Poloniex"
+) -> pd.DataFrame | None:
+    """
+    Carrega dados de criptomoedas de um arquivo local ou faz o download,
+    aplicando as melhores práticas de organização e manipulação de arquivos.
+    """
     try:
-        filename = f"{base_symbol.upper()}_{quote_symbol.upper()}_{timeframe}.csv"
-        filepath = os.path.join("data", "raw", filename)
+        filename = f"{base_symbol.upper()}{quote_symbol.upper()}_{timeframe}.csv"
+        data_dir = Path("data/raw")
+        filepath = data_dir / filename
 
-        print(f"[DEBUG] Verificando caminho: {filepath} | Existe? {os.path.exists(filepath)}")
-
-        if not os.path.exists(filepath):
-            # Monta a URL para download
-            url = f"https://www.cryptodatadownload.com/cdd/{exchange}_{base_symbol.upper()}{quote_symbol.upper()}_{timeframe}.csv"
-            print(f"[DEBUG] Tentando baixar arquivo de: {url}")
+        if not filepath.exists():
+            logging.info(f"Arquivo '{filepath}' não encontrado. Tentando download...")
+            url = f"https://www.cryptodatadownload.com/cdd/{exchange}_{filename}"
+            
             try:
                 response = requests.get(url, timeout=30)
+                
                 if response.status_code == 200:
-                    os.makedirs(os.path.dirname(filepath), exist_ok=True)
-                    with open(filepath, 'wb') as f:
-                        f.write(response.content)
-                    print(f"[DEBUG] Download concluído e salvo em: {filepath}")
+                    data_dir.mkdir(parents=True, exist_ok=True)
+                    filepath.write_bytes(response.content)
+                    logging.info(f"Download concluído com sucesso.")
                 else:
-                    print(f"[ERRO] Falha ao baixar arquivo. Status code: {response.status_code}")
+                    logging.error(f"Falha no download. Servidor retornou status: {response.status_code}")
                     return None
-            except Exception as e:
-                print(f"[ERRO] Exceção ao tentar baixar arquivo: {e}")
+            except requests.RequestException as e:
+                logging.error(f"Exceção de rede durante o download: {e}")
                 return None
 
-        # escapa a linha de comentário e trata BOM invisível
+        logging.debug(f"Lendo arquivo: {filepath}")
         df = pd.read_csv(filepath, skiprows=1, encoding='utf-8-sig')
-
-        # Mostrar as colunas reais lidas
-        print("[DEBUG] Colunas lidas do CSV:", df.columns.tolist())
-
-        # Padronizar nomes (minúsculo, sem espaços, troca espaços por underline)
-        df.columns = [col.strip().lower().replace(' ', '_') for col in df.columns]
-
-        print("[DEBUG] Colunas normalizadas:", df.columns.tolist())
-
-        # Remover colunas não numéricas e irrelevantes, se existirem
-        for col in ['symbol', 'exchange', 'unix']:
-            if col in df.columns:
-                df = df.drop(columns=[col])
-
-        # Remover linhas onde 'close' não é numérico (ex: header residual ou erro de leitura)
-        if 'close' in df.columns:
-            df = df[pd.to_numeric(df['close'], errors='coerce').notnull()]
-            df['close'] = pd.to_numeric(df['close'], errors='coerce')
-
-        # Garantir que 'date' exista
-        if 'date' not in df.columns:
-            raise ValueError(f"[ERRO] Coluna 'date' não encontrada. Colunas disponíveis: {df.columns.tolist()}")
-
-        df['date'] = pd.to_datetime(df['date'])
-
-        return df.sort_values('date')
+        
+        return _process_dataframe(df)
 
     except Exception as e:
-        print(f"[ERRO] Falha ao carregar dados de {base_symbol}: {e}")
+        logging.error(f"Falha crítica ao carregar/processar dados para {base_symbol}: {e}")
         return None
