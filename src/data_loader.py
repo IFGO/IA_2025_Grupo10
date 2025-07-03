@@ -38,6 +38,16 @@ def load_crypto_data(base_symbol: str, quote_symbol: str, timeframe: str, exchan
 
         print("[DEBUG] Colunas normalizadas:", df.columns.tolist())
 
+        # Remover colunas não numéricas e irrelevantes, se existirem
+        for col in ['symbol', 'exchange', 'unix']:
+            if col in df.columns:
+                df = df.drop(columns=[col])
+
+        # Remover linhas onde 'close' não é numérico (ex: header residual ou erro de leitura)
+        if 'close' in df.columns:
+            df = df[pd.to_numeric(df['close'], errors='coerce').notnull()]
+            df['close'] = pd.to_numeric(df['close'], errors='coerce')
+
         # Garantir que 'date' exista
         if 'date' not in df.columns:
             raise ValueError(f"[ERRO] Coluna 'date' não encontrada. Colunas disponíveis: {df.columns.tolist()}")
