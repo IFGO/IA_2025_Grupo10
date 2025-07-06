@@ -3,9 +3,26 @@ import numpy as np
 from typing import List
 import ta # Você precisaria instalar: pip install ta
 import logging # Adicionado para warnings
+from src.external_data import fetch_usd_brl_bacen
 
-# Adicionado para depuração:
-# print("Loading src/feature_engineering.py")
+
+def enrich_with_external_features(df: pd.DataFrame, use_usd_brl: bool = True) -> pd.DataFrame:
+    """
+    Adiciona variáveis macroeconômicas externas ao dataframe principal.
+    Atualmente: cotação USD/BRL via BACEN.
+    """
+    if use_usd_brl:
+        start = df["date"].min().strftime("%Y-%m-%d")
+        end = df["date"].max().strftime("%Y-%m-%d")
+        usd_brl_df = fetch_usd_brl_bacen(start, end)
+
+        if not usd_brl_df.empty:
+            df = pd.merge(df, usd_brl_df, on="date", how="left")
+        else:
+            print("[AVISO] Cotação USD/BRL não foi adicionada (dados indisponíveis).")
+
+    return df
+
 
 def create_moving_average_features(df: pd.DataFrame, windows: List[int]) -> pd.DataFrame:
     """

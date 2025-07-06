@@ -13,6 +13,7 @@ from src.feature_engineering import create_moving_average_features, create_techn
 from src.model_training import train_and_evaluate_model, compare_models # Novos módulos
 from src.prediction_profit import simulate_investment_and_profit # Novo módulo
 from src.statistical_tests import perform_hypothesis_test, perform_anova_analysis # Novo módulo
+from src.feature_engineering import enrich_with_external_features # Importa a função de enriquecimento com dados externos
 
 #Parametros vindos do config.py
 from config import (
@@ -71,6 +72,7 @@ def main():
                         help="Grau máximo para a regressão polinomial (de 2 a 10).")
     parser.add_argument('--force_download', action='store_true',
                         help="Força o download dos dados mesmo que o arquivo já exista.")
+    parser.add_argument("--use_usd_brl", action="store_true", help="Incluir cotação USD/BRL como feature externa")
     args = parser.parse_args()
 
     print(f">>> Executando ação: {args.action} para crypto: {args.crypto}")
@@ -127,6 +129,12 @@ def main():
             if df is not None and not df.empty:
                 nome_arquivo = f"{simbolo_base.upper()}_{moeda_cotacao.upper()}_{timeframe}.csv"
                 caminho_arquivo = os.path.join(output_folder, nome_arquivo)
+
+                #Enriquecer com dados externos (cotação USD/BRL)
+                if args.use_usd_brl:
+                    from src.feature_engineering import enrich_with_external_features
+                    df = enrich_with_external_features(df, use_usd_brl=True)
+
                 df.to_csv(caminho_arquivo, index=False)
 
                 log_info.update({

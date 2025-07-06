@@ -59,16 +59,20 @@ O arquivo `requirements.txt` indica os requisitos que o projeto deve conter, que
     ```
     pandas
     numpy
+    scikit-learn
     matplotlib
     seaborn
-    scikit-learn
-    joblib
-    scipy
     statsmodels
+    pytest
+    pytest-cov
+    black
+    ruff
+    python-dotenv
     pytest
     pytest-cov
     ta
     requests
+    git+https://github.com/AlissonAnjos/bcb.git
     ```
 ## Uso
 
@@ -81,6 +85,11 @@ O script principal `main.py` é configurável via linha de comando (CLI) usando 
 * **Executar todo o fluxo (download, análise, features, treinamento, lucro, estatísticas) para todas as criptomoedas configuradas:**
     ```bash
     python main.py --action all
+    ```
+* **Executar todo o fluxo integrndo a cotação oficial do dólar (USD/BRL) como feature externa para enriquecer os dados das criptomoedas, para todas as criptomoedas configuradas:**
+
+    ```bash
+    python main.py --action all --use_usd_brl
     ```
 
 * **Apenas baixar os dados para todas as criptomoedas:**
