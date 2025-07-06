@@ -251,9 +251,14 @@ def main():
                         continue
 
                     logging.info(f"Treinando e avaliando modelos para {pair_key}...")
-                    # Define as features (X) e o target (y)
-                    # Exclua 'date' e 'close' do X, e qualquer coluna que não seja uma feature
-                    features = [col for col in df_featured.columns if col not in ['date', 'close']]
+                    # Define as features (X) e o target (y) com variáveis selecionadas
+                    selected_features = [
+                        'high', 'low', 'sma_7', 'sma_14', 'sma_30',
+                        'close_lag5', 'macd', 'macd_signal', 'macd_diff',
+                        'bb_upper', 'bb_lower', 'bb_mavg', 'daily_return'
+                    ]
+                    # Filtra apenas as colunas presentes no DataFrame (evita erro caso alguma esteja ausente)
+                    features = [col for col in selected_features if col in df_featured.columns]
                     X = df_featured[features]
                     y = df_featured['close']
 
@@ -307,7 +312,14 @@ def main():
 
                     logging.info(f"Simulando lucro para {pair_key}...")
                     # Define as features (X) e o target (y)
-                    features = [col for col in df_featured.columns if col not in ['date', 'close']]
+                    # Define as features (X) e o target (y) com variáveis selecionadas
+                    selected_features = [
+                        'high', 'low', 'sma_7', 'sma_14', 'sma_30',
+                        'close_lag5', 'macd', 'macd_signal', 'macd_diff',
+                        'bb_upper', 'bb_lower', 'bb_mavg', 'daily_return'
+                    ]
+                    # Filtra apenas as colunas presentes no DataFrame (evita erro caso alguma esteja ausente)
+                    features = [col for col in selected_features if col in df_featured.columns]
                     X = df_featured[features]
                     y = df_featured['close']
                     dates = df_featured['date']

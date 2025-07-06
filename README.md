@@ -29,6 +29,9 @@ Projeto de previsão de preços de criptomoedas com base em aprendizado de máqu
 │   ├── test_data_visualizer.py     #Teste do data_visualizer (gerador de gráficos pra séries temporais)
 │   ├── test_feature_engineering.py #Teste do feature_engineering (criador e transformador de features para os modelos)
 │   └── test_model_training.py      #Teste do model_training (treinador, avaliador e comparativo de modelos de regressão)
+├── choose_var_training/            # Scripts auxiliares para análise e seleção de variáveis de treino
+│   ├── escolher_variaveis_treino.py# Gera heatmaps de correlação entre variáveis dos arquivos processados
+│   └── otimizando_variaveis.py     # Ajusta e avalia modelos de regressão linear múltipla para seleção de variáveis
 ├── main.py                         # Script principal configurável via linha de comando (CLI)
 ├── config.py                       # (Opcional) Arquivo para configurações globais do projeto
 ├── README.md                       # Este arquivo de documentação
@@ -170,5 +173,16 @@ O projeto segue as seguintes boas práticas:
 * **Entrega:** A entrega final deve ser realizada até o dia 10/Jul/2025.
 * **Compartilhamento:** O código deverá ser disponibilizado e compartilhado no Google Colab ou plataforma similar.
 ---
+
+
+## Scripts Auxiliares para Escolha de Variáveis
+
+A pasta `choose_var_training/` contém scripts para análise exploratória e seleção de variáveis para o treino dos modelos:
+
+- **escolher_variaveis_treino.py**: Gera automaticamente heatmaps de correlação (com `annot=True`) para cada arquivo `.csv` em `data/processed`, excluindo a coluna `date`. Os gráficos são salvos como `heatmap_correlacao_<nome_do_arquivo>.png`.
+- **otimizando_variaveis.py**: Executa regressão linear múltipla (usando `statsmodels`) para cada arquivo `.csv` em `data/processed`, excluindo a coluna `date`, e imprime o resumo estatístico do modelo. O script pode ser facilmente adaptado para testar diferentes combinações de variáveis. Nos comentários foram colocados os resultados encontrados
+
+Esses scripts auxiliam na análise de multicolinearidade, importância e seleção das melhores features para os modelos de previsão.
+
 
 Desenvolvido por: Thales Augusto Salvador, Carlos Henrique, Miguel Toledo(2025)
