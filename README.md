@@ -72,7 +72,6 @@ O arquivo `requirements.txt` indica os requisitos que o projeto deve conter, que
     pytest-cov
     ta
     requests
-    git+https://github.com/AlissonAnjos/bcb.git
     ```
 ## Uso
 

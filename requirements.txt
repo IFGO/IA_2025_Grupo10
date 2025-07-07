@@ -13,4 +13,3 @@ pytest
 pytest-cov
 ta
 requests
-git+https://github.com/wilsonfreitas/python-bcb.git
