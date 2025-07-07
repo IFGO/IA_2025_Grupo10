@@ -21,26 +21,24 @@ def simulate_investment_and_profit(
     initial_investment: float = 1000.0
 ):
     """
-    Simula um investimento de $1,000.00 e calcula o lucro obtido por diferentes modelos.
-    Plota a evolução do lucro para cada modelo.
+    Simula um investimento e calcula o lucro de forma vetorizada.
+
+    Esta função carrega modelos pré-treinados, gera previsões de preço,
+    cria sinais de negociação e calcula a evolução de um investimento inicial
+    usando operações vetorizadas para máxima performance. Por fim, plota o
+    desempenho de cada modelo.
 
     Args:
-        X (pd.DataFrame): Features de entrada.
-        y (pd.Series): Variável alvo (preço de fechamento real).
-        dates (pd.Series): Datas correspondentes aos dados.
-        pair_name (str): Nome do par de criptomoedas.
-        models_folder (str): Pasta onde os modelos treinados estão salvos.
-        profit_plots_folder (str): Pasta para salvar os gráficos de lucro.
-        initial_investment (float): Valor inicial do investimento.
+        X (pd.DataFrame): DataFrame com as features de entrada.
+        y (pd.Series): Series com a variável alvo (preço de fecho real).
+        dates (pd.Series): Series com as datas correspondentes aos dados.
+        pair_name (str): Nome do par de moedas para nomear ficheiros.
+        models_folder (str): Diretório onde os modelos treinados estão guardados.
+        profit_plots_folder (str): Diretório para salvar os gráficos de lucro.
+        initial_investment (float): O valor inicial do investimento.
     """
-    logging.info(f"Simulando investimento e lucro para {pair_name}...")
+    logging.info(f"Simulando investimento e lucro de forma vetorizada para {pair_name}...")
 
-    # Garante que X, y e dates têm os mesmos índices e estão alinhados
-    data_df = pd.DataFrame({'date': dates, 'close': y}).set_index(X.index)
-    data_df = pd.concat([data_df, X], axis=1)
-    data_df = data_df.sort_values('date').reset_index(drop=True)
-
-    # Carrega os modelos treinados
     model_types = ['mlp', 'linear', 'polynomial', 'randomforest']
     loaded_models = {}
     for m_type in model_types:
@@ -48,53 +46,36 @@ def simulate_investment_and_profit(
         if os.path.exists(model_filename):
             try:
                 loaded_models[m_type] = joblib.load(model_filename)
-                logging.info(f"Modelo {m_type} carregado com sucesso para {pair_name}.")
             except Exception as e:
-                logging.error(f"Falha ao carregar o modelo {m_type} para {pair_name}: {e}")
+                logging.error(f"Falha ao carregar o modelo {m_type}: {e}")
         else:
-            logging.warning(f"Modelo {m_type} não encontrado para {pair_name} em {model_filename}. Ignorando.")
+            logging.warning(f"Modelo {m_type} não encontrado em {model_filename}. Ignorando.")
 
     if not loaded_models:
-        logging.error(f"Nenhum modelo encontrado para simular lucro para {pair_name}. Treine os modelos primeiro.")
+        logging.error(f"Nenhum modelo carregado para {pair_name}. Simulação cancelada.")
         return
 
-    # Alinhar o DataFrame de datas já no início, para todos os modelos
-    profit_evolution = pd.DataFrame({'date': data_df['date'].iloc[1:].reset_index(drop=True)})
+    data_df = pd.DataFrame({'date': dates, 'close': y}).set_index(X.index)
+    data_df = pd.concat([data_df, X], axis=1).sort_values('date').reset_index(drop=True)
+    
+    profit_evolution = pd.DataFrame({'date': data_df['date']})
 
     for model_key, model in loaded_models.items():
-        logging.info(f"Executando simulação para o modelo: {model_key}")
-        current_balance = initial_investment
-        daily_balances = [initial_investment]
+        logging.info(f"Executando simulação vetorizada para o modelo: {model_key}")
+        
+        all_predictions = model.predict(data_df[X.columns])
+        
+        signals = np.where(all_predictions > data_df['close'], 1, 0)
+        signals = pd.Series(signals, index=data_df.index).shift(1).fillna(0)
 
-        # Para cada dia, exceto o último (precisamos do preço do dia seguinte para previsão)
-        for i in range(len(data_df) - 1):
-            # Features para o dia atual (para prever o próximo dia)
-            current_day_features = data_df.iloc[i][X.columns].values.reshape(1, -1)
+        daily_returns = data_df['close'].pct_change().fillna(0)
+        
+        strategy_returns = daily_returns * signals
+        
+        cumulative_returns = (1 + strategy_returns).cumprod()
+        
+        profit_evolution[f'balance_{model_key}'] = initial_investment * cumulative_returns
 
-            # Previsão do preço de fechamento do próximo dia
-            try:
-                predicted_next_close = model.predict(current_day_features)[0]
-            except Exception as e:
-                logging.warning(f"Erro na previsão do modelo {model_key} no dia {data_df['date'].iloc[i]}: {e}. Usando preço atual.")
-                predicted_next_close = data_df['close'].iloc[i] # Fallback
-
-            current_close = data_df['close'].iloc[i]
-            next_day_close = data_df['close'].iloc[i+1] # Preço real do próximo dia
-
-            # Lógica de investimento: se a previsão do próximo dia for superior ao dia atual
-            if predicted_next_close > current_close:
-                # Investe todo o saldo acumulado
-                # Calcula o retorno percentual do próximo dia
-                daily_return_actual = (next_day_close - current_close) / current_close
-                current_balance *= (1 + daily_return_actual)
-            # Se a previsão for menor ou igual, não investe (mantém o saldo atual)
-
-            daily_balances.append(current_balance)
-
-        # Adiciona a coluna de saldo para o modelo atual
-        profit_evolution[f'balance_{model_key}'] = daily_balances[1:]
-
-    # Plotar o gráfico de evolução do lucro (Requisito 9f)
     plt.figure(figsize=(16, 9))
     sns.set_palette("tab10")
 
@@ -103,12 +84,15 @@ def simulate_investment_and_profit(
         if col_name in profit_evolution.columns:
             plt.plot(profit_evolution['date'], profit_evolution[col_name], label=f'Modelo: {model_key.upper()}')
 
-    plt.title(f'Evolução do Lucro com Investimento de $1,000.00 - {pair_name}', fontsize=16)
+    plt.title(f'Evolução do Lucro com Investimento de ${initial_investment:,.2f} - {pair_name}', fontsize=16)
     plt.xlabel('Data', fontsize=12)
     plt.ylabel('Saldo Acumulado (USDT)', fontsize=12)
     plt.grid(True, linestyle='--', linewidth=0.5)
     plt.legend()
+    plt.tight_layout()
     plt.gcf().autofmt_xdate()
+    if not os.path.exists(profit_plots_folder):
+        os.makedirs(profit_plots_folder)
     plot_path = os.path.join(profit_plots_folder, f"profit_evolution_{pair_name.replace(' ', '_')}.png")
     plt.savefig(plot_path, dpi=150)
     plt.close()
