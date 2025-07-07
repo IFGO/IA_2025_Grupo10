@@ -47,3 +47,5 @@ htmlcov/ # Pasta gerada pelo pytest-cov
 
 # Arquivos de Jupyter Notebook
 .ipynb_checkpoints/
+analysis
+data/raw

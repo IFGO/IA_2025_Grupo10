@@ -3,60 +3,114 @@ import numpy as np
 import logging
 import os
 import matplotlib.pyplot as plt
-import seaborn as sns
-from typing import Dict
+from typing import Dict, List
 from scipy import stats
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
-def perform_hypothesis_test(df: pd.DataFrame, pair_name: str, target_return_percent: float, output_dir: str) -> None:
-    """
-    Realiza um teste de hipótese unilateral à direita sobre o retorno médio diário da criptomoeda.
-    H0: O retorno médio diário <= target_return_percent
-    H1: O retorno médio diário > target_return_percent
-    """
-    from scipy import stats
-    import numpy as np
-    import os
+# --- Configuração do Logging ---
+# Configura um logging básico para exibir mensagens no console.
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
-    # Calcula os retornos diários e remove NaNs
-    returns = df['close'].pct_change().dropna()
+# --- Funções Auxiliares ---
 
-    # Verificação de amostra válida
-    if returns.empty or returns.std() == 0 or len(returns) < 2:
-        logging.warning(f"[{pair_name}] Dados insuficientes ou desvio padrão nulo para teste de hipótese.")
+def _calculate_daily_returns(df: pd.DataFrame) -> pd.Series:
+    """
+    Calcula os retornos diários a partir da coluna 'close' de um DataFrame.
+
+    Esta função é "privada" (indicada pelo underscore inicial) e serve para
+    isolar e padronizar o cálculo dos retornos, evitando efeitos secundários
+    nos DataFrames originais.
+
+    Args:
+        df (pd.DataFrame): DataFrame que deve conter a coluna 'close'.
+
+    Returns:
+        pd.Series: Uma série com os retornos diários, já sem valores NaN.
+                   Retorna uma série vazia se os dados forem inválidos.
+    """
+    if 'close' not in df.columns or df['close'].isnull().all():
+        return pd.Series(dtype=np.float64)
+    # .pct_change() calcula a variação percentual.
+    # .dropna() remove o primeiro valor que será NaN.
+    return df['close'].pct_change().dropna()
+
+# --- Funções de Testes Estatísticos ---
+
+def perform_hypothesis_test(
+    df: pd.DataFrame,
+    pair_name: str,
+    target_return_percent: float,
+    save_folder: str,
+    alpha: float = 0.05
+):
+    """
+    Realiza um teste de hipótese para verificar se o retorno esperado médio
+    é superior a um valor alvo (x%).
+
+    Hipótese Nula (H0): O retorno médio diário é menor ou igual a x%.
+    Hipótese Alternativa (H1): O retorno médio diário é maior que x%.
+
+    Args:
+        df (pd.DataFrame): DataFrame com os dados da criptomoeda.
+        pair_name (str): Nome do par de criptomoedas (ex: 'BTC_USDT').
+        target_return_percent (float): O valor x% (em formato decimal) a ser testado.
+        save_folder (str): Pasta para salvar os relatórios.
+        alpha (float): Nível de significância (padrão 0.05).
+    """
+    logging.info(f"Iniciando teste de hipótese para {pair_name}...")
+
+    daily_returns = _calculate_daily_returns(df)
+
+    if daily_returns.empty:
+        logging.warning(f"Não foi possível calcular retornos diários para {pair_name}. Teste de hipótese cancelado.")
         return
 
-    # Estatísticas básicas
-    sample_mean = returns.mean()
-    sample_std = returns.std()
-    n = len(returns)
+    sample_mean = daily_returns.mean()
+    sample_std = daily_returns.std()
+    n = len(daily_returns)
 
-    # Teste t unilateral à direita (greater)
-    t_statistic, p_value = stats.ttest_1samp(returns, popmean=target_return_percent, alternative='greater')
+    # Realiza o teste t de uma amostra.
+    # 'alternative="greater"' especifica que é um teste unilateral à direita (H1: media > popmean).
+    t_statistic, p_value = stats.ttest_1samp(
+        daily_returns,
+        popmean=target_return_percent,
+        alternative='greater'
+    )
 
-    alpha = 0.05
-    reject_null = p_value < alpha
+    logging.info(f"  --- Resultados do Teste de Hipótese para {pair_name} ---")
+    logging.info(f"  Retorno Médio da Amostra: {sample_mean:.6f}")
+    logging.info(f"  Retorno Alvo (H0): {target_return_percent:.6f}")
+    logging.info(f"  Estatística t: {t_statistic:.4f}")
+    logging.info(f"  P-valor: {p_value:.4f}")
 
-    # Formatação final do texto
-    report_text = f"""Relatório de Teste de Hipótese para {pair_name}
---------------------------------------------------
-Hipótese Nula (H0): Retorno médio diário <= {target_return_percent*100:.2f}%
-Hipótese Alternativa (H1): Retorno médio diário > {target_return_percent*100:.2f}%
-Nível de Significância (alpha): {alpha}
+    if p_value < alpha:
+        conclusion = (f"Rejeitamos a hipótese nula. Há evidências estatísticas para afirmar que o "
+                      f"retorno médio diário de {pair_name} é SUPERIOR a {target_return_percent*100:.2f}%.")
+    else:
+        conclusion = (f"Não rejeitamos a hipótese nula. Não há evidências estatísticas para afirmar que o "
+                      f"retorno médio diário de {pair_name} é SUPERIOR a {target_return_percent*100:.2f}%.")
+    logging.info(f"  Conclusão: {conclusion}")
 
-Retorno Médio da Amostra: {sample_mean:.6f}
-Desvio Padrão da Amostra: {sample_std:.6f}
-Tamanho da Amostra (n): {n}
-Estatística t: {t_statistic:.6f}
-P-valor: {p_value:.6f}
-
-Conclusão: {"Rejeitamos a hipótese nula. Há evidências significativas para afirmar que o retorno médio diário de " + pair_name + " é SUPERIOR a " + f"{target_return_percent*100:.2f}%." if reject_null else "Não rejeitamos a hipótese nula. Não há evidências significativas para afirmar que o retorno médio diário de " + pair_name + " é SUPERIOR a " + f"{target_return_percent*100:.2f}%."}
-"""
-
-    # Salvar arquivo
-    report_path = os.path.join(output_dir, f"hypothesis_test_report_{pair_name}.txt")
-    with open(report_path, "w", encoding="utf-8") as f:
-        f.write(report_text)
+    # Salva os resultados em um arquivo de texto.
+    report_path = os.path.join(save_folder, f"hypothesis_test_report_{pair_name}.txt")
+    os.makedirs(save_folder, exist_ok=True)
+    with open(report_path, 'w', encoding='utf-8') as f:
+        f.write(f"Relatório de Teste de Hipótese para {pair_name}\n")
+        f.write("-" * 50 + "\n")
+        f.write(f"H0: Retorno médio diário <= {target_return_percent*100:.2f}%\n")
+        f.write(f"H1: Retorno médio diário > {target_return_percent*100:.2f}%\n")
+        f.write(f"Nível de Significância (alpha): {alpha}\n\n")
+        f.write(f"Retorno Médio da Amostra: {sample_mean:.6f}\n")
+        f.write(f"Desvio Padrão da Amostra: {sample_std:.6f}\n")
+        f.write(f"Tamanho da Amostra (n): {n}\n")
+        f.write(f"Estatística t: {t_statistic:.4f}\n")
+        f.write(f"P-valor: {p_value:.4f}\n\n")
+        f.write(f"Conclusão: {conclusion}\n")
+    logging.info(f"Relatório salvo em: {report_path}")
 
 
 def perform_anova_analysis(
@@ -65,205 +119,196 @@ def perform_anova_analysis(
     alpha: float = 0.05
 ):
     """
-    Realiza análises de variância (ANOVA) para comparar os retornos médios diários das criptomoedas.
-    Inclui ANOVA entre todas as criptomoedas e entre grupos de criptomoedas.
+    Realiza Análise de Variância (ANOVA) para comparar os retornos médios diários
+    entre diferentes criptomoedas e entre grupos de volatilidade.
 
     Args:
-        all_data (Dict[str, pd.DataFrame]): Dicionário de DataFrames de criptomoedas.
+        all_data (Dict[str, pd.DataFrame]): Dicionário onde as chaves são nomes
+                                            de criptomoedas e os valores são seus DataFrames.
         save_folder (str): Pasta para salvar os relatórios e gráficos.
         alpha (float): Nível de significância (padrão 0.05).
     """
     logging.info("Iniciando análise ANOVA...")
+    os.makedirs(save_folder, exist_ok=True)
 
-    if not all_data:
-        logging.warning("Nenhum dado disponível para análise ANOVA.")
-        return
-
-    # --- 11a. ANOVA entre todas as criptomoedas ---
-    logging.info("Realizando ANOVA para comparar retornos médios entre todas as criptomoedas...")
-    returns_list = []
-    crypto_names = []
-    valid_cryptos = {}
-
+    # 1. Preparação dos Dados
+    all_returns = {}
     for name, df in all_data.items():
-        if not df.empty and 'close' in df.columns:
-            df['daily_return'] = df['close'].pct_change().dropna()
-            if not df['daily_return'].empty:
-                returns_list.append(df['daily_return'])
-                crypto_names.append(name.replace('_USDT', ''))
-                valid_cryptos[name.replace('_USDT', '')] = df['daily_return']
-            else:
-                logging.warning(f"Não há retornos diários válidos para {name}. Ignorando na ANOVA.")
+        daily_returns = _calculate_daily_returns(df)
+        if not daily_returns.empty:
+            clean_name = name.replace('_USDT', '')
+            all_returns[clean_name] = daily_returns
         else:
-            logging.warning(f"Dados inválidos ou sem coluna 'close' para {name}. Ignorando na ANOVA.")
+            logging.warning(f"Ignorando {name} na análise ANOVA por falta de dados de retorno válidos.")
 
-    if len(returns_list) < 2:
-        logging.warning("São necessárias pelo menos duas criptomoedas com retornos válidos para realizar ANOVA.")
+    if len(all_returns) < 2:
+        logging.error("São necessárias pelo menos duas criptomoedas com dados válidos para realizar ANOVA.")
         return
+
+    # 2. ANOVA entre todas as criptomoedas
+    _run_anova_and_tukey(
+        data_groups=all_returns,
+        group_type_name="Criptomoeda",
+        report_filename="anova_report_all_cryptos.txt",
+        plot_filename="tukey_hsd_all_cryptos.png",
+        save_folder=save_folder,
+        alpha=alpha
+    )
+
+    # 3. ANOVA por agrupamento de volatilidade
+    logging.info("Realizando ANOVA para comparar retornos entre grupos de volatilidade...")
+
+    volatilities = pd.Series({name: returns.std() for name, returns in all_returns.items()})
+    
+    if len(volatilities) < 3:
+        logging.warning("Dados insuficientes para agrupar por volatilidade. São necessários no mínimo 3 ativos.")
+        return
+
+    # Agrupamento em "baixa", "média", "alta" volatilidade
+    low_thresh = volatilities.quantile(0.33)
+    high_thresh = volatilities.quantile(0.66)
+
+    volatility_groups = {
+        'Baixa Volatilidade': [all_returns[name] for name, vol in volatilities.items() if vol <= low_thresh],
+        'Média Volatilidade': [all_returns[name] for name, vol in volatilities.items() if low_thresh < vol <= high_thresh],
+        'Alta Volatilidade': [all_returns[name] for name, vol in volatilities.items() if vol > high_thresh]
+    }
+    
+    # Filtra grupos que possam ter ficado vazios
+    volatility_groups_for_anova = {k: v for k, v in volatility_groups.items() if v}
+
+    if len(volatility_groups_for_anova) < 2:
+        logging.warning("Menos de 2 grupos de volatilidade formados. ANOVA por grupo cancelada.")
+        return
+        
+    # Concatena os retornos de cada cripto dentro de seu grupo de volatilidade
+    final_groups = {name: pd.concat(returns_list, ignore_index=True) for name, returns_list in volatility_groups_for_anova.items()}
+
+    _run_anova_and_tukey(
+        data_groups=final_groups,
+        group_type_name="Grupo de Volatilidade",
+        report_filename="anova_report_volatility_groups.txt",
+        plot_filename="tukey_hsd_volatility_groups.png",
+        save_folder=save_folder,
+        alpha=alpha
+    )
+
+def _run_anova_and_tukey(
+    data_groups: Dict[str, pd.Series],
+    group_type_name: str,
+    report_filename: str,
+    plot_filename: str,
+    save_folder: str,
+    alpha: float
+):
+    """
+    Função auxiliar para executar o ciclo ANOVA -> Tukey HSD -> Relatório.
+    """
+    logging.info(f"Executando ANOVA para grupos de '{group_type_name}'...")
+    
+    group_names = list(data_groups.keys())
+    returns_list = list(data_groups.values())
 
     f_statistic, p_value = stats.f_oneway(*returns_list)
 
-    logging.info(f"  --- ANOVA entre Criptomoedas ---")
+    logging.info(f"  --- ANOVA entre {group_type_name}s ---")
+    logging.info(f"  Grupos Analisados: {group_names}")
     logging.info(f"  F-Estatística: {f_statistic:.4f}")
     logging.info(f"  P-valor: {p_value:.4f}")
-    logging.info(f"  Nível de Significância (alpha): {alpha}")
 
-    anova_conclusion_all = ""
     if p_value < alpha:
-        anova_conclusion_all = "Rejeitamos a hipótese nula. Há evidências significativas de que o retorno médio diário difere entre as criptomoedas analisadas."
-        logging.info(f"  Conclusão: {anova_conclusion_all}")
-        logging.info("  Realizando teste post hoc (Tukey HSD) para identificar diferenças...")
+        conclusion = f"Rejeitamos a hipótese nula. Há uma diferença significativa entre os retornos médios dos {group_type_name}s."
+        logging.info(f"  Conclusão: {conclusion}")
+        
+        # Prepara dados para o teste post-hoc de Tukey
+        tukey_data = pd.concat(
+            [pd.DataFrame({'returns': returns, 'group': name}) for name, returns in data_groups.items()],
+            ignore_index=True
+        )
+        
+        tukey_result = pairwise_tukeyhsd(endog=tukey_data['returns'], groups=tukey_data['group'], alpha=alpha)
+        logging.info("Resultados do teste Post Hoc (Tukey HSD):\n" + str(tukey_result))
 
-        # Preparar dados para Tukey HSD
-        data_for_tukey = pd.DataFrame()
-        for name, returns in valid_cryptos.items():
-            temp_df = pd.DataFrame({'returns': returns, 'crypto': name})
-            data_for_tukey = pd.concat([data_for_tukey, temp_df], ignore_index=True)
-
-        if not data_for_tukey.empty:
-            tukey_result = pairwise_tukeyhsd(endog=data_for_tukey['returns'], groups=data_for_tukey['crypto'], alpha=alpha)
-            logging.info("\n" + str(tukey_result))
-
-            # Plotar resultados do Tukey HSD
-            plt.figure(figsize=(12, 8))
-            tukey_result.plot_simultaneous()
-            plt.title(f'Teste Post Hoc de Tukey HSD para Retornos Diários - {", ".join(crypto_names)}')
-            plt.tight_layout()
-            plot_path = os.path.join(save_folder, f"tukey_hsd_all_cryptos.png")
-            plt.savefig(plot_path, dpi=150)
-            plt.close()
-            logging.info(f"Gráfico Tukey HSD salvo em: {plot_path}")
-        else:
-            logging.warning("Dados insuficientes para Tukey HSD após ANOVA.")
-
+        # Plota os resultados do Tukey HSD
+        fig = tukey_result.plot_simultaneous()
+        plt.title(f'Teste Post Hoc de Tukey HSD - {group_type_name}s')
+        plt.tight_layout()
+        plot_path = os.path.join(save_folder, plot_filename)
+        fig.savefig(plot_path, dpi=150)
+        plt.close(fig)
+        logging.info(f"Gráfico Tukey HSD salvo em: {plot_path}")
+        
     else:
-        anova_conclusion_all = "Não rejeitamos a hipótese nula. Não há evidências significativas de que o retorno médio diário difere entre as criptomoedas analisadas."
-        logging.info(f"  Conclusão: {anova_conclusion_all}")
+        conclusion = f"Não rejeitamos a hipótese nula. Não há diferença significativa entre os retornos médios dos {group_type_name}s."
+        tukey_result = None
+        logging.info(f"  Conclusão: {conclusion}")
 
-    # Salvar relatório ANOVA (todas as criptos)
-    report_path_all = os.path.join(save_folder, "anova_report_all_cryptos.txt")
-    with open(report_path_all, 'w') as f:
-        f.write("Relatório de Análise de Variância (ANOVA) - Todas as Criptomoedas\n")
+    # Salva o relatório da ANOVA
+    report_path = os.path.join(save_folder, report_filename)
+    with open(report_path, 'w', encoding='utf-8') as f:
+        f.write(f"Relatório de Análise de Variância (ANOVA) - {group_type_name}s\n")
         f.write("-" * 70 + "\n")
-        f.write(f"Criptomoedas Analisadas: {', '.join(crypto_names)}\n")
-        f.write(f"Hipótese Nula (H0): Os retornos médios diários são iguais entre as criptomoedas.\n")
-        f.write(f"Hipótese Alternativa (H1): Pelo menos um retorno médio diário difere.\n")
+        f.write(f"Grupos Analisados: {', '.join(group_names)}\n")
+        f.write(f"H0: Os retornos médios são iguais entre os grupos.\n")
+        f.write(f"H1: Pelo menos um retorno médio difere.\n")
         f.write(f"Nível de Significância (alpha): {alpha}\n\n")
         f.write(f"F-Estatística: {f_statistic:.4f}\n")
         f.write(f"P-valor: {p_value:.4f}\n\n")
-        f.write(f"Conclusão: {anova_conclusion_all}\n")
-        if p_value < alpha:
+        f.write(f"Conclusão: {conclusion}\n")
+        if tukey_result:
             f.write("\nResultados do Teste Post Hoc (Tukey HSD):\n")
-            if 'tukey_result' in locals():
-                f.write(str(tukey_result))
-            else:
-                f.write("Não foi possível gerar resultados do Tukey HSD.\n")
-    logging.info(f"Relatório ANOVA (todas as criptos) salvo em: {report_path_all}")
+            f.write(str(tukey_result))
+    logging.info(f"Relatório ANOVA salvo em: {report_path}")
 
 
-    # --- 11b. ANOVA por agrupamento (ex: por volatilidade média) ---
-    logging.info("Realizando ANOVA para comparar retornos médios entre grupos de criptomoedas (por volatilidade média)...")
+# --- Bloco de Exemplo de Execução ---
+if __name__ == '__main__':
+    logging.info("Executando script em modo de exemplo...")
 
-    # Calcular volatilidade média para agrupamento
-    crypto_volatilities = {}
-    for name, df in all_data.items():
-        if not df.empty and 'close' in df.columns:
-            df['daily_return'] = df['close'].pct_change().dropna()
-            if not df['daily_return'].empty:
-                crypto_volatilities[name.replace('_USDT', '')] = df['daily_return'].std()
-            else:
-                logging.warning(f"Não há retornos diários válidos para {name}. Ignorando no agrupamento por volatilidade.")
+    # Cria uma pasta para salvar os resultados
+    results_folder = "statistical_reports"
+    os.makedirs(results_folder, exist_ok=True)
 
-    if not crypto_volatilities or len(crypto_volatilities) < 2:
-        logging.warning("Dados insuficientes para agrupar por volatilidade e realizar ANOVA.")
-        return
+    # 1. Cria dados de exemplo (mock data)
+    np.random.seed(42) # Para resultados reproduzíveis
+    days = 252 # Aproximadamente um ano de dias de negociação
+    
+    # Criando 3 ativos com médias de retorno e volatilidades diferentes
+    btc_returns = np.random.normal(loc=0.001, scale=0.02, size=days) # Média maior, vol. média
+    eth_returns = np.random.normal(loc=0.0005, scale=0.025, size=days) # Média menor, vol. maior
+    ada_returns = np.random.normal(loc=0.0011, scale=0.015, size=days) # Média maior, vol. baixa
 
-    # Agrupar em "baixa", "média", "alta" volatilidade
-    volatility_series = pd.Series(crypto_volatilities)
-    low_threshold = volatility_series.quantile(0.33)
-    high_threshold = volatility_series.quantile(0.66)
+    # Converte retornos para preços (começando de um preço base 100)
+    def returns_to_prices(returns, initial_price=100):
+        return initial_price * (1 + returns).cumprod()
 
-    groups = {
-        'Baixa Volatilidade': [],
-        'Média Volatilidade': [],
-        'Alta Volatilidade': []
+    mock_data = {
+        "BTC_USDT": pd.DataFrame({'close': returns_to_prices(btc_returns, 50000)}),
+        "ETH_USDT": pd.DataFrame({'close': returns_to_prices(eth_returns, 3000)}),
+        "ADA_USDT": pd.DataFrame({'close': returns_to_prices(ada_returns, 1.5)}),
+        "SOL_USDT": pd.DataFrame({'close': returns_to_prices(np.random.normal(0.002, 0.03, days), 150)}),
+        "XRP_USDT": pd.DataFrame({'close': returns_to_prices(np.random.normal(0.0001, 0.022, days), 0.8)}),
+        "EMPTY_DF": pd.DataFrame({'close': []}) # Exemplo de dado inválido
     }
 
-    for crypto, vol in volatility_series.items():
-        if vol <= low_threshold:
-            groups['Baixa Volatilidade'].append(valid_cryptos[crypto])
-        elif vol <= high_threshold:
-            groups['Média Volatilidade'].append(valid_cryptos[crypto])
-        else:
-            groups['Alta Volatilidade'].append(valid_cryptos[crypto])
+    # 2. Executa o teste de hipótese para um dos ativos
+    # H0: Retorno médio do BTC <= 0.05%
+    # H1: Retorno médio do BTC > 0.05%
+    perform_hypothesis_test(
+        df=mock_data["BTC_USDT"],
+        pair_name="BTC_USDT",
+        target_return_percent=0.0005, # 0.05%
+        save_folder=results_folder,
+        alpha=0.05
+    )
 
-    # Remover grupos vazios para ANOVA
-    groups_for_anova = {k: v for k, v in groups.items() if v}
-    if len(groups_for_anova) < 2:
-        logging.warning("Menos de 2 grupos de volatilidade formados. Não é possível realizar ANOVA por grupo.")
-        return
+    logging.info("\n" + "="*50 + "\n")
 
-    # Aplanar as listas de retornos para cada grupo
-    group_returns_for_anova = [pd.concat(g) for g in groups_for_anova.values()]
-    group_names_for_anova = list(groups_for_anova.keys())
-
-    f_statistic_group, p_value_group = stats.f_oneway(*group_returns_for_anova)
-
-    logging.info(f"  --- ANOVA entre Grupos de Volatilidade ---")
-    logging.info(f"  Grupos Analisados: {group_names_for_anova}")
-    logging.info(f"  F-Estatística: {f_statistic_group:.4f}")
-    logging.info(f"  P-valor: {p_value_group:.4f}")
-    logging.info(f"  Nível de Significância (alpha): {alpha}")
-
-    anova_conclusion_group = ""
-    if p_value_group < alpha:
-        anova_conclusion_group = "Rejeitamos a hipótese nula. Há evidências significativas de que o retorno médio diário difere entre os grupos de volatilidade."
-        logging.info(f"  Conclusão: {anova_conclusion_group}")
-        logging.info("  Realizando teste post hoc (Tukey HSD) para identificar diferenças entre grupos...")
-
-        # Preparar dados para Tukey HSD de grupos
-        data_for_tukey_group = pd.DataFrame()
-        for g_name, g_returns_list in groups_for_anova.items():
-            for returns_series in g_returns_list:
-                temp_df = pd.DataFrame({'returns': returns_series, 'group': g_name})
-                data_for_tukey_group = pd.concat([data_for_tukey_group, temp_df], ignore_index=True)
-
-        if not data_for_tukey_group.empty:
-            tukey_result_group = pairwise_tukeyhsd(endog=data_for_tukey_group['returns'], groups=data_for_tukey_group['group'], alpha=alpha)
-            logging.info("\n" + str(tukey_result_group))
-
-            # Plotar resultados do Tukey HSD para grupos
-            plt.figure(figsize=(12, 8))
-            tukey_result_group.plot_simultaneous()
-            plt.title(f'Teste Post Hoc de Tukey HSD para Retornos Diários - Grupos de Volatilidade')
-            plt.tight_layout()
-            plot_path_group = os.path.join(save_folder, f"tukey_hsd_volatility_groups.png")
-            plt.savefig(plot_path_group, dpi=150)
-            plt.close()
-            logging.info(f"Gráfico Tukey HSD (grupos) salvo em: {plot_path_group}")
-        else:
-            logging.warning("Dados insuficientes para Tukey HSD para grupos após ANOVA.")
-
-    else:
-        anova_conclusion_group = "Não rejeitamos a hipótese nula. Não há evidências significativas de que o retorno médio diário difere entre os grupos de volatilidade."
-        logging.info(f"  Conclusão: {anova_conclusion_group}")
-
-    # Salvar relatório ANOVA (grupos)
-    report_path_group = os.path.join(save_folder, "anova_report_volatility_groups.txt")
-    with open(report_path_group, 'w') as f:
-        f.write("Relatório de Análise de Variância (ANOVA) - Grupos de Volatilidade\n")
-        f.write("-" * 70 + "\n")
-        f.write(f"Grupos Analisados: {group_names_for_anova}\n")
-        f.write(f"Hipótese Nula (H0): Os retornos médios diários são iguais entre os grupos de volatilidade.\n")
-        f.write(f"Hipótese Alternativa (H1): Pelo menos um retorno médio diário difere entre os grupos.\n")
-        f.write(f"Nível de Significância (alpha): {alpha}\n\n")
-        f.write(f"F-Estatística: {f_statistic_group:.4f}\n")
-        f.write(f"P-valor: {p_value_group:.4f}\n\n")
-        f.write(f"Conclusão: {anova_conclusion_group}\n")
-        if p_value_group < alpha:
-            f.write("\nResultados do Teste Post Hoc (Tukey HSD):\n")
-            if 'tukey_result_group' in locals():
-                f.write(str(tukey_result_group))
-            else:
-                f.write("Não foi possível gerar resultados do Tukey HSD.\n")
-    logging.info(f"Relatório ANOVA (grupos) salvo em: {report_path_group}")
+    # 3. Executa a análise ANOVA completa
+    perform_anova_analysis(
+        all_data=mock_data,
+        save_folder=results_folder,
+        alpha=0.05
+    )
+    
+    logging.info(f"\nAnálises concluídas. Verifique a pasta '{results_folder}' para os relatórios.")
