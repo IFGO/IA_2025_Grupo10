@@ -31,7 +31,8 @@ from config import (
     MOVING_AVERAGE_WINDOWS,
     FEATURES_SELECIONADAS,
     INITIAL_INVESTMENT,
-    USE_USD_BRL
+    USE_USD_BRL,
+    N_ESTIMATORS_RF
 )
 
 def setup_logging(level_str: str = 'ERROR'):
@@ -73,6 +74,8 @@ def main():
                         help="Retorno esperado médio (%) para o teste de hipótese.")
     parser.add_argument('--poly_degree', type=int, default=DEFAULT_POLY_DEGREE,
                         help="Grau máximo para a regressão polinomial.")
+    parser.add_argument('--n_estimators', type=int, default=N_ESTIMATORS_RF,
+                        help="Número de estimadores para o modelo RandomForest.")
     parser.add_argument('--force_download', action='store_true',
                         help="Força o download dos dados mesmo que o arquivo já exista.")
     parser.add_argument("--use_usd_brl", action="store_true", default=USE_USD_BRL,
@@ -147,9 +150,11 @@ def main():
             y_clean = y[mask]
             train_and_evaluate_model(X_clean, y_clean, model_type=args.model, kfolds=args.kfolds,
                                      pair_name=pair_key, models_folder=MODELS_FOLDER,
-                                     poly_degree=args.poly_degree)
+                                     poly_degree=args.poly_degree,
+                                     n_estimators=args.n_estimators)
             compare_models(X_clean, y_clean, kfolds=args.kfolds, pair_name=pair_key,
-                           plots_folder=ANALYSIS_FOLDER, poly_degree=args.poly_degree)
+                           plots_folder=ANALYSIS_FOLDER, poly_degree=args.poly_degree,
+                           n_estimators=args.n_estimators)
 
     if args.action in ['all', 'profit']:
         logging.info("Iniciando simulação de lucro.")

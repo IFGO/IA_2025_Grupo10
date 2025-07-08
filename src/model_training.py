@@ -22,7 +22,8 @@ def train_and_evaluate_model(
     kfolds: int,
     pair_name: str,
     models_folder: str,
-    poly_degree: int = 2
+    poly_degree: int = 2,
+    n_estimators: int = 150
 ):
     """
     Treina, avalia e salva um modelo de regressão usando K-fold cross-validation.
@@ -43,7 +44,7 @@ def train_and_evaluate_model(
         'MLP': MLPRegressor(hidden_layer_sizes=(100, 50), max_iter=500, random_state=42, early_stopping=True, n_iter_no_change=50),
         'Linear': LinearRegression(),
         'Polynomial': make_pipeline(PolynomialFeatures(degree=poly_degree), LinearRegression()),
-        'RandomForest': RandomForestRegressor(n_estimators=100, random_state=42)
+        'RandomForest': RandomForestRegressor(n_estimators=n_estimators, random_state=42)
     }
 
     if model_type not in model_mapping:
@@ -112,7 +113,8 @@ def compare_models(
     kfolds: int,
     pair_name: str,
     plots_folder: str,
-    poly_degree: int = 2
+    poly_degree: int = 2,
+    n_estimators: int = 150
 ):
     """
     Compara múltiplos modelos de regressão, exibe métricas e gera gráficos.
@@ -131,7 +133,7 @@ def compare_models(
         'MLP': MLPRegressor(hidden_layer_sizes=(100, 50), max_iter=500, random_state=42, early_stopping=True, n_iter_no_change=50),
         'Linear Regression': LinearRegression(),
         'Polynomial Regression': make_pipeline(PolynomialFeatures(degree=poly_degree), LinearRegression()),
-        'Random Forest': RandomForestRegressor(n_estimators=100, random_state=42)
+        'Random Forest': RandomForestRegressor(n_estimators=n_estimators, random_state=42)
     }
 
     results = []
