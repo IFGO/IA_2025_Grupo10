@@ -97,7 +97,8 @@ def main():
             nome_arquivo = f"{simbolo_base.upper()}_{MOEDA_COTACAO.upper()}_{TIMEFRAME}.csv"
             caminho_arquivo = os.path.join(OUTPUT_FOLDER, nome_arquivo)
             
-            if not args.force_download and os.path.exists(caminho_arquivo):
+            # Verifica se o arquivo já existe e se não deve forçar o download, o and not use_usd_brl garantirá que toda vez que use_usd_brl for True, o download será feito para realizar o enriquecimento com a cotação USD/BRL
+            if not args.force_download and os.path.exists(caminho_arquivo) and not args.use_usd_brl:
                 df = pd.read_csv(caminho_arquivo)
                 all_dfs[f"{simbolo_base.upper()}_{MOEDA_COTACAO.upper()}"] = df
                 continue
@@ -142,6 +143,7 @@ def main():
             features = [col for col in FEATURES_SELECIONADAS if col in df_featured.columns]
             X = df_featured[features]
             y = df_featured['close']
+            # Remove linhas com valores ausentes
             mask = ~(X.isna().any(axis=1) | y.isna())
             X_clean = X[mask]
             y_clean = y[mask]
