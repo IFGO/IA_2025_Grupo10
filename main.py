@@ -74,6 +74,8 @@ def main():
                         help="Retorno esperado médio (%) para o teste de hipótese.")
     parser.add_argument('--poly_degree', type=int, default=DEFAULT_POLY_DEGREE,
                         help="Grau máximo para a regressão polinomial.")
+    parser.add_argument('--validation_split', type=float, default=0.3,
+                    help="Fração dos dados usada como hold-out para validação final (ex: 0.3 = 30%, 0.0 = sem separação pra hold-out).")
     parser.add_argument('--n_estimators', type=int, default=N_ESTIMATORS_RF,
                         help="Número de estimadores para o modelo RandomForest.")
     parser.add_argument('--force_download', action='store_true',
@@ -153,10 +155,12 @@ def main():
             train_and_evaluate_model(X_clean, y_clean, model_type=args.model, kfolds=args.kfolds,
                                      pair_name=pair_key, models_folder=MODELS_FOLDER,
                                      poly_degree=args.poly_degree,
-                                     n_estimators=args.n_estimators)
+                                     n_estimators=args.n_estimators,
+                                     test_size=args.validation_split)
             compare_models(X_clean, y_clean, kfolds=args.kfolds, pair_name=pair_key,
                            plots_folder=ANALYSIS_FOLDER, poly_degree=args.poly_degree,
-                           n_estimators=args.n_estimators)
+                           n_estimators=args.n_estimators,
+                           test_size=args.validation_split)
 
     if args.action in ['all', 'profit']:
         logging.info("Iniciando simulação de lucro.")

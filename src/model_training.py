@@ -7,7 +7,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.model_selection import KFold
+from sklearn.model_selection import train_test_split, KFold
 from sklearn.neural_network import MLPRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
@@ -23,7 +23,8 @@ def train_and_evaluate_model(
     pair_name: str,
     models_folder: str,
     poly_degree: int = 2,
-    n_estimators: int = 150
+    n_estimators: int = 150,
+    test_size: float = 0.3
 ):
     """
     Treina, avalia e salva um modelo de regressão usando K-fold cross-validation.
@@ -59,6 +60,13 @@ def train_and_evaluate_model(
     kf = KFold(n_splits=kfolds, shuffle=True, random_state=42)
     X_reset, y_reset = X.reset_index(drop=True), y.reset_index(drop=True)
 
+    # Separa dados para validação final (hold-out) apenas se test_size > 0
+    if test_size > 0:
+        X_train_full, X_val, y_train_full, y_val = train_test_split(X_reset, y_reset, test_size=test_size, random_state=42)
+    else:
+        X_train_full, y_train_full = X_reset, y_reset
+        X_val, y_val = None, None
+
     if len(X_reset) < kfolds:
         logging.warning(f"Dados insuficientes para {kfolds}-Fold CV em {pair_name}. Treinando no conjunto completo.")
         if len(X_reset) > 0:
@@ -75,9 +83,10 @@ def train_and_evaluate_model(
     mae_scores = np.zeros(kfolds)
     r2_scores = np.zeros(kfolds)
 
-    for i, (train_index, test_index) in enumerate(kf.split(X_reset)):
-        X_train, X_test = X_reset.iloc[train_index], X_reset.iloc[test_index]
-        y_train, y_test = y_reset.iloc[train_index], y_reset.iloc[test_index]
+    for i, (train_index, test_index) in enumerate(kf.split(X_train_full)):
+        X_train, X_test = X_train_full.iloc[train_index], X_train_full.iloc[test_index]
+        y_train, y_test = y_train_full.iloc[train_index], y_train_full.iloc[test_index]
+
 
         try:
             model.fit(X_train, y_train)
@@ -95,6 +104,18 @@ def train_and_evaluate_model(
         logging.info(f"  MSE Médio: {np.nanmean(mse_scores):.4f}")
         logging.info(f"  MAE Médio: {np.nanmean(mae_scores):.4f}")
         logging.info(f"  R2 Médio: {np.nanmean(r2_scores):.4f}")
+
+        if test_size > 0 and X_val is not None:
+            try:
+                model.fit(X_train_full, y_train_full)
+                y_pred_val = model.predict(X_val)
+                final_r2 = r2_score(y_val, y_pred_val)
+                final_mae = mean_absolute_error(y_val, y_pred_val)
+                final_mse = mean_squared_error(y_val, y_pred_val)
+                logging.info(f"[{pair_name}] Hold-Out - R2: {final_r2:.4f}, MAE: {final_mae:.2f}, MSE: {final_mse:.2f}")
+            except Exception as e:
+                logging.error(f"Erro ao avaliar no conjunto hold-out para {model_type} em {pair_name}: {e}")
+
 
         try:
             model.fit(X_reset, y_reset)
@@ -114,7 +135,8 @@ def compare_models(
     pair_name: str,
     plots_folder: str,
     poly_degree: int = 2,
-    n_estimators: int = 150
+    n_estimators: int = 150,
+    test_size: float = 0.3
 ):
     """
     Compara múltiplos modelos de regressão, exibe métricas e gera gráficos.
@@ -128,6 +150,7 @@ def compare_models(
         poly_degree (int): O grau a ser usado na regressão polinomial.
     """
     logging.info(f"Comparando modelos para {pair_name}...")
+    
 
     models = {
         'MLP': MLPRegressor(hidden_layer_sizes=(100, 50), max_iter=500, random_state=42, early_stopping=True, n_iter_no_change=50),
@@ -139,6 +162,14 @@ def compare_models(
     results = []
     kf = KFold(n_splits=kfolds, shuffle=True, random_state=42)
     X_reset, y_reset = X.reset_index(drop=True), y.reset_index(drop=True)
+    
+    # Separa os dados para validação real (hold-out)
+    if test_size > 0:
+        X_train_full, X_val, y_train_full, y_val = train_test_split(X_reset, y_reset, test_size=test_size, random_state=42)
+    else:
+        X_train_full, y_train_full = X_reset, y_reset
+        X_val, y_val = None, None
+
 
     if len(X_reset) < kfolds:
         logging.warning(f"Dados insuficientes para {kfolds}-Fold CV para comparação em {pair_name}.")
@@ -150,9 +181,10 @@ def compare_models(
         r2_scores = np.zeros(kfolds)
         std_error_scores = np.zeros(kfolds)
 
-        for i, (train_index, test_index) in enumerate(kf.split(X_reset)):
-            X_train, X_test = X_reset.iloc[train_index], X_reset.iloc[test_index]
-            y_train, y_test = y_reset.iloc[train_index], y_reset.iloc[test_index]
+        for i, (train_index, test_index) in enumerate(kf.split(X_train_full)):
+            X_train, X_test = X_train_full.iloc[train_index], X_train_full.iloc[test_index]
+            y_train, y_test = y_train_full.iloc[train_index], y_train_full.iloc[test_index]
+
 
             try:
                 model.fit(X_train, y_train)
@@ -180,6 +212,19 @@ def compare_models(
 
     df_results = pd.DataFrame(results)
     logging.info(f"\n*** Comparação de Modelos para {pair_name} ***\n{df_results.to_string()}")
+
+    # Avaliação no conjunto de validação final (hold-out)
+    if test_size > 0 and X_val is not None:
+        try:
+            model.fit(X_train_full, y_train_full)
+            y_val_pred = model.predict(X_val)
+            holdout_r2 = r2_score(y_val, y_val_pred)
+            holdout_mae = mean_absolute_error(y_val, y_val_pred)
+            holdout_mse = mean_squared_error(y_val, y_val_pred)
+            logging.info(f"[{pair_name}] {model_name} - Hold-Out -> R2: {holdout_r2:.4f}, MAE: {holdout_mae:.2f}, MSE: {holdout_mse:.2f}")
+        except Exception as e:
+            logging.error(f"Erro na avaliação final (hold-out) do modelo {model_name}: {e}")
+
 
     best_regressor = df_results.loc[df_results['Avg MSE'].idxmin()]
     logging.info(f"Melhor Regressor para {pair_name} (baseado em MSE): {best_regressor['Model']}")

@@ -96,3 +96,47 @@ def test_compare_models(sample_model_data, tmp_path):
 
     # Verifica se a função executou sem erros graves (verificações mais aprofundadas seriam para métricas)
     # A saída do log pode ser verificada para resultados de comparação, mas isso é mais complexo em testes unitários.
+
+def test_train_and_evaluate_model_with_custom_split(sample_model_data, temp_models_folder):
+    """
+    Testa o treinamento com uma fração de validação personalizada (hold-out de 50%).
+    """
+    X, y = sample_model_data
+    pair_name = "TEST_MLP_SPLIT"
+    model_type = "MLP"
+    kfolds = 3
+    test_size = 0.5  # 50% dos dados para validação final
+
+    # Chamada com parâmetro adicional
+    train_and_evaluate_model(
+        X, y,
+        model_type=model_type,
+        kfolds=kfolds,
+        pair_name=pair_name,
+        models_folder=temp_models_folder,
+        test_size=test_size
+    )
+
+    model_path = os.path.join(temp_models_folder, f"{model_type.lower()}_{pair_name}.pkl")
+    assert os.path.exists(model_path)
+
+    loaded_model = joblib.load(model_path)
+    assert isinstance(loaded_model, MLPRegressor)
+    assert loaded_model.predict(X.iloc[:1]).shape == (1,)
+
+def test_compare_models_with_custom_split(sample_model_data, tmp_path):
+    """
+    Testa a função de comparação de modelos com validação hold-out de 40%.
+    """
+    X, y = sample_model_data
+    pair_name = "TEST_COMPARE_SPLIT"
+    kfolds = 3
+    test_size = 0.4
+    plots_folder = tmp_path / "test_plots_split"
+    plots_folder.mkdir()
+
+    compare_models(X, y, kfolds, pair_name, str(plots_folder), test_size=test_size)
+
+    plot_path = os.path.join(str(plots_folder), f"scatter_plot_models_{pair_name}.png")
+    assert os.path.exists(plot_path)
+

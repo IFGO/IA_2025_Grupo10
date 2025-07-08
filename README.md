@@ -127,6 +127,11 @@ O script principal `main.py` é configurável via linha de comando (CLI) usando 
     ```
     (Note que `--target_return_percent` é um valor decimal, por exemplo, `0.0002` representa `0.02%`).
 
+* **Treinar o modelo MLP para todas as criptomoedas com 10 folds e 20% dos dados reservados para validação final:**
+    ```bash
+    python main.py --action train --model MLP --kfolds 10 --validation_split 0.2
+    ```
+
 ### Parâmetros Disponíveis:
 
 * `--action`: Define a etapa do fluxo de trabalho a ser executada.
@@ -146,6 +151,7 @@ O script principal `main.py` é configurável via linha de comando (CLI) usando 
 * `--kfolds`: Número de folds para K-fold cross-validation (padrão: `5`).
 * `--target_return_percent`: O valor percentual (em decimal) para o teste de hipótese (padrão: `0.01` para `1%`).
 * `--poly_degree`: Grau máximo para a regressão polinomial (de `2` a `10`, padrão: `2`).
+* `--validation_split`: Fração dos dados para reservar como conjunto de validação final (hold-out), para avaliação do modelo em dados não vistos (padrão: `0.3`, ou seja, 30% reserva. Para não reservar dados, usar 0.0).
 
 ## Executando Testes Automatizados
 
