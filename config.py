@@ -6,13 +6,13 @@ CRIPTOS_PARA_BAIXAR = [
 MOEDA_COTACAO = "USDT"
 TIMEFRAME = "d" 
 
-OUTPUT_FOLDER = 'output'
-PROCESSED_DATA_FOLDER = 'processed'
-MODELS_FOLDER = 'models'
-PLOTS_FOLDER = 'plots'
-ANALYSIS_FOLDER = 'analysis'
-PROFIT_PLOTS_FOLDER = 'profit_plots'
-STATS_REPORTS_FOLDER = 'stats_reports'
+OUTPUT_FOLDER = 'data/output'
+PROCESSED_DATA_FOLDER = 'data/processed'
+MODELS_FOLDER = 'data/models'
+PLOTS_FOLDER = 'grafico/plots'
+ANALYSIS_FOLDER = 'grafico/analysis'
+PROFIT_PLOTS_FOLDER = 'grafico/profit_plots'
+STATS_REPORTS_FOLDER = 'data/stats_reports'
 
 DEFAULT_KFOLDS = 5
 DEFAULT_TARGET_RETURN_PERCENT = 0.01

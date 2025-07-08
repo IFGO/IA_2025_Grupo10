@@ -142,7 +142,6 @@ def main():
             features = [col for col in FEATURES_SELECIONADAS if col in df_featured.columns]
             X = df_featured[features]
             y = df_featured['close']
-            # Remove linhas com NaN em X ou y
             mask = ~(X.isna().any(axis=1) | y.isna())
             X_clean = X[mask]
             y_clean = y[mask]
