@@ -65,7 +65,8 @@ def simulate_investment_and_profit(
         
         all_predictions = model.predict(data_df[X.columns])
         
-        signals = np.where(all_predictions > data_df['close'], 1, 0)
+        last_known_price = data_df['close'].shift(1).fillna(0)
+        signals = np.where(all_predictions > last_known_price, 1, 0)
         signals = pd.Series(signals, index=data_df.index).shift(1).fillna(0)
 
         daily_returns = data_df['close'].pct_change().fillna(0)
