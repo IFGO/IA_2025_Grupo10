@@ -1,5 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import seaborn as sns
 import os
 import logging
@@ -58,11 +59,20 @@ def generate_analysis_plots(df: pd.DataFrame, pair_name: str, save_folder: str):
 
     logging.info(f"Gerando plots de análise para {pair_name}...")
 
+    # Converte a coluna 'date' para datetime e remove linhas com datas inválidas
+    df['date'] = pd.to_datetime(df['date'], errors='coerce')
+    df = df.dropna(subset=['date']).sort_values('date').reset_index(drop=True)
+
     fig = plt.figure(figsize=(20, 12))
     gs = fig.add_gridspec(2, 2)
     fig.suptitle(f'Análise Completa - {pair_name}', fontsize=20, y=0.95)
 
     ax1 = fig.add_subplot(gs[0, :])
+
+    #Adiciona formatação elegante de datas
+    ax1.xaxis.set_major_locator(mdates.YearLocator())
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+
     ax1.plot(df['date'], df['close'], label='Preço de Fechamento', color='navy', alpha=0.9)
 
     mean_price = df['close'].mean()
