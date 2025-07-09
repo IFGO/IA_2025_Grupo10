@@ -94,7 +94,11 @@ def main():
     all_processed_dfs: Dict[str, pd.DataFrame] = {}
 
     if args.action in ['all', 'download']:
-        logging.info(f"Iniciando processo de download para {len(CRIPTOS_PARA_BAIXAR)} criptomoedas.")
+        if args.crypto == 'all' or args.crypto == '':
+            logging.info(f"Iniciando processo de download para {len(CRIPTOS_PARA_BAIXAR)} criptomoedas.")
+        else:
+            logging.info(f"Iniciando processo de download para a criptomoeda: {args.crypto.upper()}.")
+
         for simbolo_base in CRIPTOS_PARA_BAIXAR:
             if args.crypto != 'all' and simbolo_base != args.crypto:
                 continue
