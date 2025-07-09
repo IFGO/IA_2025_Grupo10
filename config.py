@@ -6,8 +6,8 @@ CRIPTOS_PARA_BAIXAR = [
 MOEDA_COTACAO = "USDT"
 TIMEFRAME = "d" 
 
-OUTPUT_FOLDER = 'data/output'
-PROCESSED_DATA_FOLDER = 'data/processed'
+OUTPUT_FOLDER = 'data/output' # Local de saída dos dados pre-processados dos arquivos baixados: remove nans, converte tipos, ordena por data, refaz os índices, etc.
+PROCESSED_DATA_FOLDER = 'data/processed' 
 MODELS_FOLDER = 'data/models'
 PLOTS_FOLDER = 'grafico/plots'
 ANALYSIS_FOLDER = 'grafico/analysis'
