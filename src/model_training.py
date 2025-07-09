@@ -175,6 +175,7 @@ def compare_models(
         logging.warning(f"Dados insuficientes para {kfolds}-Fold CV para comparação em {pair_name}.")
         return
 
+    resultadosHoldOut = "\n"
     for model_name, model in models.items():
         mse_scores = np.zeros(kfolds)
         mae_scores = np.zeros(kfolds)
@@ -197,6 +198,18 @@ def compare_models(
                 logging.error(f"Erro na comparação do modelo {model_name} no Fold {i+1}: {e}")
                 mse_scores[i], mae_scores[i], r2_scores[i], std_error_scores[i] = np.nan, np.nan, np.nan, np.nan
         
+        # Avaliação no conjunto de validação final (hold-out)
+        if test_size > 0 and X_val is not None:
+            try:
+                model.fit(X_train_full, y_train_full)
+                y_val_pred = model.predict(X_val)
+                holdout_r2 = r2_score(y_val, y_val_pred)
+                holdout_mae = mean_absolute_error(y_val, y_val_pred)
+                holdout_mse = mean_squared_error(y_val, y_val_pred)
+                resultadosHoldOut += (f"[{pair_name}] {model_name} - Hold-Out -> R2: {holdout_r2:.4f}, MAE: {holdout_mae:.2f}, MSE: {holdout_mse:.2f}\n")
+            except Exception as e:
+                logging.error(f"Erro na avaliação final (hold-out) do modelo {model_name}: {e}")
+
         if not np.isnan(mse_scores).all():
             results.append({
                 'Model': model_name,
@@ -205,6 +218,8 @@ def compare_models(
                 'Avg R2': np.nanmean(r2_scores),
                 'Avg Std Error': np.nanmean(std_error_scores)
             })
+        
+        
 
     if not results:
         logging.warning(f"Nenhum resultado de modelo foi gerado para {pair_name}.")
@@ -212,18 +227,9 @@ def compare_models(
 
     df_results = pd.DataFrame(results)
     logging.info(f"\n*** Comparação de Modelos para {pair_name} ***\n{df_results.to_string()}")
+    logging.info(resultadosHoldOut)
 
-    # Avaliação no conjunto de validação final (hold-out)
-    if test_size > 0 and X_val is not None:
-        try:
-            model.fit(X_train_full, y_train_full)
-            y_val_pred = model.predict(X_val)
-            holdout_r2 = r2_score(y_val, y_val_pred)
-            holdout_mae = mean_absolute_error(y_val, y_val_pred)
-            holdout_mse = mean_squared_error(y_val, y_val_pred)
-            logging.info(f"[{pair_name}] {model_name} - Hold-Out -> R2: {holdout_r2:.4f}, MAE: {holdout_mae:.2f}, MSE: {holdout_mse:.2f}")
-        except Exception as e:
-            logging.error(f"Erro na avaliação final (hold-out) do modelo {model_name}: {e}")
+    
 
 
     best_regressor = df_results.loc[df_results['Avg MSE'].idxmin()]
@@ -289,7 +295,7 @@ def _log_coefficients(X, y, models, pair_name):
             equation = f"y = {intercept:.4f}"
             for feature, coef in zip(feature_names, coefs):
                 equation += f" + ({coef:.4f} * {feature})"
-            logging.info(f"  Modelo: {model_name} -> {equation}")
+            logging.info(f"  Modelo: {model_name} -> {equation}\n")
         except Exception as e:
             logging.warning(f"Não foi possível determinar a equação para {model_name}: {e}")
 
