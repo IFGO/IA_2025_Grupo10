@@ -44,6 +44,10 @@ CRIPTOS_PARA_BAIXAR = [
 MOEDA_COTACAO = "USDT"
 TIMEFRAME = "d" 
 
+RAW_FILENAME_TEMPLATE = "{base}_{quote}_{timeframe}.csv"
+FEATURED_FILENAME_TEMPLATE = "featured_{base}_{quote}.csv"
+MODEL_FILENAME_TEMPLATE = "{model_type}_{base}_{quote}.pkl"
+
 OUTPUT_FOLDER = 'data/output' # Local de saída dos dados pre-processados dos arquivos baixados: remove nans, converte tipos, ordena por data, refaz os índices, etc.
 PROCESSED_DATA_FOLDER = 'data/processed' 
 MODELS_FOLDER = 'data/models'
