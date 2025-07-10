@@ -2,6 +2,8 @@ import pytest
 import pandas as pd
 import os
 import logging
+from pathlib import Path
+import pathlib
 from src.data_loader import load_crypto_data
 
 # Configura o logging para evitar poluir a saída do teste
@@ -13,18 +15,21 @@ def test_load_crypto_data_success(monkeypatch):
     """
     Testa o carregamento bem-sucedido de dados de criptomoeda.
     """
-    def mock_read_csv(url, skiprows=1):
-        # Retorna diretamente um DataFrame que mimetiza a estrutura esperada
-        if "Poloniex_BTCUSDT_d.csv" in url:
+
+    def mock_read_csv(filepath, skiprows=1, encoding=None):
+        if Path(filepath).name == "BTC_USDT_d.csv":
             data = {
                 'date': pd.to_datetime(['2023-01-01', '2023-01-02', '2023-01-03']),
                 'close': [100.0, 101.5, 102.0],
                 'open': [99.0, 100.0, 101.5]
             }
             return pd.DataFrame(data)
-        raise Exception(f"URL de mock não esperada: {url}")
+        raise Exception(f"Arquivo mock inesperado: {filepath}")
 
-    monkeypatch.setattr(pd, 'read_csv', mock_read_csv)
+    # Patching correto
+    monkeypatch.setattr("src.data_loader.pd.read_csv", mock_read_csv)
+    monkeypatch.setattr("pathlib.Path.exists", lambda self: True)
+
 
     df = load_crypto_data(base_symbol="BTC", quote_symbol="USDT", timeframe="d")
 
