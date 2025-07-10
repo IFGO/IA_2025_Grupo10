@@ -195,6 +195,35 @@ def main():
 
     if args.action in ['all', 'train']:
         logging.info("Iniciando treinamento e avaliação de modelos.")
+        #==============================================
+        
+        #caso esteja executando só train, sem ter executado all
+        if args.action == 'train':
+            for simbolo_base in CRIPTOS_PARA_BAIXAR:
+                if args.crypto != 'all' and simbolo_base != args.crypto:
+                    continue
+                
+                nome_arquivo = f"featured_{simbolo_base.upper()}_{MOEDA_COTACAO.upper()}.csv"
+                caminho_arquivo = os.path.join(PROCESSED_DATA_FOLDER, nome_arquivo)
+                
+                # Verifica se o arquivo já existe, se nao conseguir ler o arquivo com pd.read_csv(caminho_arquivo) ou o arquivo estiver vazio logging.error(f"Erro ao ler o arquivo {caminho_arquivo}. Verifique se o arquivo existe e está no formato correto. Você deve executar antes python main.py --action features (que tem como pré-requisito main.py --action download).")
+                if os.path.exists(caminho_arquivo):
+                    df = pd.read_csv(caminho_arquivo)
+                    all_processed_dfs[f"{simbolo_base.upper()}_{MOEDA_COTACAO.upper()}"] = df
+                    continue
+                #se o arquivo não existir ou estiver vazio, apresenta a mensagem
+                logging.error(f"Erro ao ler o arquivo {caminho_arquivo}. Verifique se o arquivo existe e está no formato correto.")
+                
+        
+        #se all_processed_dfs estiver vazio, significa que não foram processados os arquivos csv com os dados, então não faz sentido continuar
+        if not all_processed_dfs:
+            logging.error("Nenhum dado disponível para análise. Execute primeiro a ação 'features' com python main.py --action features, para criar os arquivos de todas as moedas ou informando a criptomoeda desejada com o parâmetro crypto. Lembrando, para esta ação a --action download deve ser executada antes.")
+            return
+        
+        
+        
+        
+        #==============================
         for pair_key, df_featured in all_processed_dfs.items():
             if args.crypto != 'all' and pair_key.split('_')[0] != args.crypto:
                 continue
@@ -218,6 +247,34 @@ def main():
 
     if args.action in ['all', 'profit']:
         logging.info("Iniciando simulação de lucro.")
+        #==============================================
+        
+        #caso esteja executando só profit, sem ter executado all
+        if args.action == 'profit':
+            for simbolo_base in CRIPTOS_PARA_BAIXAR:
+                if args.crypto != 'all' and simbolo_base != args.crypto:
+                    continue
+                
+                nome_arquivo = f"featured_{simbolo_base.upper()}_{MOEDA_COTACAO.upper()}.csv"
+                caminho_arquivo = os.path.join(PROCESSED_DATA_FOLDER, nome_arquivo)
+                
+                # Verifica se o arquivo já existe, se nao conseguir ler o arquivo com pd.read_csv(caminho_arquivo) ou o arquivo estiver vazio logging.error(f"Erro ao ler o arquivo {caminho_arquivo}. Verifique se o arquivo existe e está no formato correto. Você deve executar antes python main.py --action features (que tem como pré-requisito main.py --action download).")
+                if os.path.exists(caminho_arquivo):
+                    df = pd.read_csv(caminho_arquivo)
+                    all_processed_dfs[f"{simbolo_base.upper()}_{MOEDA_COTACAO.upper()}"] = df
+                    continue
+                #se o arquivo não existir ou estiver vazio, apresenta a mensagem
+                logging.error(f"Erro ao ler o arquivo {caminho_arquivo}. Verifique se o arquivo existe e está no formato correto.")                
+        
+        #se all_processed_dfs estiver vazio, significa que não foram processados os arquivos csv com os dados, então não faz sentido continuar
+        if not all_processed_dfs:
+            logging.error("Nenhum dado disponível para análise. Execute primeiro a ação 'features' com python main.py --action features, para criar os arquivos de todas as moedas ou informando a criptomoeda desejada com o parâmetro crypto. Lembrando, para esta ação a --action download deve ser executada antes.")
+            return
+        
+        
+        
+        
+        #==============================
         for pair_key, df_featured in all_processed_dfs.items():
             if args.crypto != 'all' and pair_key.split('_')[0] != args.crypto:
                 continue
