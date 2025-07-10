@@ -21,7 +21,9 @@ Projeto de previsão de preços de criptomoedas com base em aprendizado de máqu
 │   ├── feature_engineering.py      # Cria e transforma features para os modelos
 │   ├── model_training.py           # Lida com o treinamento, avaliação e comparação de modelos de regressão
 │   ├── prediction_profit.py        # Simula investimentos e calcula o lucro potencial
-│   └── statistical_tests.py        # Implementa testes de hipótese e Análise de Variância (ANOVA)
+│   ├── statistical_tests.py        # Implementa testes de hipótese e Análise de Variância (ANOVA)
+│   ├── external_data.py            # Coleta de Dados Financeiros de Fontes Externas
+│   └── utils.py                    # Módulo de Funções Utilitárias.
 ├── tests/                          # Casos de teste automatizados para validação do código
 │   ├── init.py                     # Torna 'tests' um pacote Python
 │   ├── test_data_loader.py         #Teste do data loader (carregador dos dados históricos)
@@ -111,6 +113,11 @@ O script principal `main.py` é configurável via linha de comando (CLI) usando 
     python main.py --action train --model MLP --kfolds 10
     ```
 
+* **Treinar o modelo MLP para todas as criptomoedas com 10 folds e 20% dos dados reservados para validação final:**
+    ```bash
+    python main.py --action train --model MLP --kfolds 10 --validation_split 0.2
+    ```
+
 * **Treinar o modelo de Regressão Polinomial (grau 3) para o XRP:**
     ```bash
     python main.py --action train --model Polynomial --poly_degree 3 --crypto XRP
@@ -127,10 +134,7 @@ O script principal `main.py` é configurável via linha de comando (CLI) usando 
     ```
     (Note que `--target_return_percent` é um valor decimal, por exemplo, `0.0002` representa `0.02%`).
 
-* **Treinar o modelo MLP para todas as criptomoedas com 10 folds e 20% dos dados reservados para validação final:**
-    ```bash
-    python main.py --action train --model MLP --kfolds 10 --validation_split 0.2
-    ```
+
 
 ### Parâmetros Disponíveis:
 
@@ -143,7 +147,7 @@ O script principal `main.py` é configurável via linha de comando (CLI) usando 
     * `profit`: Simula o investimento e calcula o lucro obtido pelos modelos.
     * `stats`: Realiza testes de hipótese e análises ANOVA.
 * `--crypto`: Símbolo da criptomoeda para processar (ex: `BTC`, `ETH`). Use `all` (padrão) para aplicar a ação a todas as criptomoedas configuradas internamente no `main.py`.
-* `--model`: Tipo de modelo a ser usado para treinamento (aplicável com `--action train`).
+* `--model`: Tipo de modelo a ser usado para treinamento (aplicável com `--action train`). Se fornecer o modelo, o treino será com o modelo fornecido, senão, o software escolhe o melhor, baseado em MSE
     * `MLP` (padrão): Multi Layer Perceptron (Rede Neural).
     * `Linear`: Regressão Linear.
     * `Polynomial`: Regressão Polinomial.
