@@ -76,6 +76,7 @@ def train_and_evaluate_model(
     """
     logging.info(f"Iniciando treino e avaliação do modelo {model_type} para {pair_name}...")
 
+    
     model_mapping = {
         'MLP': MLPRegressor(hidden_layer_sizes=(100, 50), max_iter=500, random_state=42, early_stopping=True, n_iter_no_change=50),
         'Linear': LinearRegression(),
@@ -376,3 +377,92 @@ def _log_coefficients(X, y, models, pair_name):
         except Exception as e:
             logging.warning(f"Não foi possível determinar a equação para {model_name}: {e}")
 
+def get_best_model_by_mse(
+    X: pd.DataFrame,
+    y: pd.Series,
+    kfolds: int,
+    poly_degree: int = 2,
+    n_estimators: int = 150
+):
+    """
+    Compara múltiplos modelos de regressão e retorna o de melhor desempenho.
+
+    Executa validação cruzada K-fold para vários modelos de regressão
+    (MLP, Linear, Polinomial e Random Forest), calcula o erro médio quadrático
+    (MSE) para cada modelo, identifica o modelo com o menor MSE médio e retorna
+    a instância treinada juntamente com seu nome.
+
+    Args:
+        X (pd.DataFrame): DataFrame com as features de entrada.
+        y (pd.Series): Series com a variável alvo.
+        kfolds (int): O número de folds para a validação cruzada.
+        poly_degree (int, optional): Grau para a Regressão Polinomial. Padrão é 2.
+        n_estimators (int, optional): Número de árvores no RandomForest. Padrão é 150.
+
+    Returns:
+        Tuple[RegressorMixin, str]: O melhor modelo ajustado e seu nome.
+
+    Side Effects:
+        - Registra os MSEs médios de cada modelo no log.
+        - Loga erros de execução caso algum modelo falhe ao treinar.
+    """
+    logging.info("Executando seleção automática do melhor modelo com base em MSE...")
+
+    model_defs = {
+        'MLP': MLPRegressor(hidden_layer_sizes=(100, 50), max_iter=500, random_state=42, early_stopping=True, n_iter_no_change=50),
+        'Linear': LinearRegression(),
+        'Polynomial': make_pipeline(PolynomialFeatures(degree=poly_degree), LinearRegression()),
+        'RandomForest': RandomForestRegressor(n_estimators=n_estimators, random_state=42)
+    }
+
+    kf = KFold(n_splits=kfolds, shuffle=True, random_state=42)
+    X_reset, y_reset = X.reset_index(drop=True), y.reset_index(drop=True)
+
+    best_model = None
+    best_name = None
+    best_mse = float('inf')
+
+    for name, model in model_defs.items():
+        try:
+            mse_scores = []
+            for train_idx, test_idx in kf.split(X_reset):
+                X_train, X_test = X_reset.iloc[train_idx], X_reset.iloc[test_idx]
+                y_train, y_test = y_reset.iloc[train_idx], y_reset.iloc[test_idx]
+                model.fit(X_train, y_train)
+                y_pred = model.predict(X_test)
+                mse_scores.append(mean_squared_error(y_test, y_pred))
+            avg_mse = np.mean(mse_scores)
+            logging.info(f"{name} - MSE Médio: {avg_mse:.4f}")
+            if avg_mse < best_mse:
+                best_mse = avg_mse
+                best_model = model
+                best_name = name
+        except Exception as e:
+            logging.error(f"Erro ao avaliar {name}: {e}")
+
+    return best_model, best_name
+
+def limpar_modelos_antigos(pair_name: str, models_folder: str):
+    """
+    Remove modelos antigos (.pkl) do par especificado antes de salvar um novo.
+
+    Esta função busca por arquivos de modelos existentes associados ao par de
+    moedas (`pair_name`) dentro da pasta de modelos (`models_folder`) e remove
+    todos, exceto o que será salvo em seguida. Isso evita múltiplos modelos
+    conflitantes no diretório e garante que apenas o modelo atual esteja disponível
+    para etapas posteriores como simulação de lucro ou predição.
+
+    Args:
+        pair_name (str): Nome do par de moedas (ex: 'BTC_USDT').
+        models_folder (str): Caminho para a pasta onde os modelos são armazenados.
+
+    Side Effects:
+        - Remove arquivos `.pkl` do disco para os modelos: MLP, Linear, Polynomial e Random Forest.
+        - Registra os arquivos removidos no log.
+    """
+    formatos = ['mlp', 'linear', 'polynomial', 'randomforest']
+    for prefix in formatos:
+        caminho = os.path.join(models_folder, f"{prefix}_{pair_name}.pkl")
+        if os.path.exists(caminho):
+            os.remove(caminho)
+            logging.info(f"Modelo antigo removido: {caminho}")

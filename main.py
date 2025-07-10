@@ -27,13 +27,13 @@ import pandas as pd
 import os
 import logging
 import argparse
+import joblib
 from typing import List, Dict, Any
-
 from src.data_loader import load_crypto_data
 from src.data_visualizer import plot_crypto_data
 from src.data_analyzer import calculate_statistics, generate_analysis_plots, calculate_comparative_variability
 from src.feature_engineering import create_moving_average_features, create_technical_features
-from src.model_training import train_and_evaluate_model, compare_models
+from src.model_training import train_and_evaluate_model, compare_models, limpar_modelos_antigos
 from src.prediction_profit import simulate_investment_and_profit
 from src.statistical_tests import perform_hypothesis_test, perform_anova_analysis
 from src.feature_engineering import enrich_with_external_features
@@ -42,6 +42,7 @@ from src.utils import (
     get_raw_data_filepath,
     get_processed_data_filepath
 )
+from src.model_training import get_best_model_by_mse
 
 from config import (
     CRIPTOS_PARA_BAIXAR,
@@ -103,7 +104,7 @@ def main():
                         help="Ação a ser executada.")
     parser.add_argument('--crypto', type=str, default='all',
                         help="Símbolo da criptomoeda para processar (ex: BTC). 'all' para todas.")
-    parser.add_argument('--model', type=str, default='MLP',
+    parser.add_argument('--model', type=str, default=None,
                         choices=['MLP', 'Linear', 'Polynomial', 'RandomForest'],
                         help="Modelo a ser usado para treinamento.")
     parser.add_argument('--kfolds', type=int, default=DEFAULT_KFOLDS,
@@ -215,14 +216,43 @@ def main():
                     logging.warning(f"Sem dados suficientes para treinar modelos para {pair_key} após limpeza.")
                     continue
 
-                train_and_evaluate_model(X_clean, y_clean, model_type=args.model, kfolds=args.kfolds,
-                                         pair_name=pair_key, models_folder=MODELS_FOLDER,
-                                         poly_degree=args.poly_degree, n_estimators=args.n_estimators,
-                                         test_size=args.validation_split)
-                compare_models(X_clean, y_clean, kfolds=args.kfolds, pair_name=pair_key,
-                               plots_folder=ANALYSIS_FOLDER, poly_degree=args.poly_degree,
-                               n_estimators=args.n_estimators, test_size=args.validation_split)
+                
+                # Limpa modelos antigos antes de iniciar o treino, garantindo que apenas
+                # o modelo mais recente (especificado ou selecionado automaticamente)
+                # será considerado na fase de simulação de lucro.
+                limpar_modelos_antigos(pair_key, MODELS_FOLDER) 
 
+                #Inicia o treinamento de modelos
+                if args.model:
+                    #usa o modelo especificado pelo usuário
+                    train_and_evaluate_model(X_clean, y_clean, model_type=args.model, kfolds=args.kfolds,
+                                            pair_name=pair_key, models_folder=MODELS_FOLDER,
+                                            poly_degree=args.poly_degree, n_estimators=args.n_estimators,
+                                            test_size=args.validation_split)
+                    compare_models(X_clean, y_clean, kfolds=args.kfolds, pair_name=pair_key,
+                                plots_folder=ANALYSIS_FOLDER, poly_degree=args.poly_degree,
+                                n_estimators=args.n_estimators, test_size=args.validation_split)
+                else:
+                    # modo automático: encontra e salva o melhor modelo
+                    best_model, best_name = get_best_model_by_mse(
+                        X_clean, y_clean,
+                        kfolds=args.kfolds,
+                        poly_degree=args.poly_degree,
+                        n_estimators=args.n_estimators
+                    )
+
+                    if best_model is not None:
+                        best_model.fit(X_clean, y_clean)
+                        model_path = os.path.join(MODELS_FOLDER, f"{best_name.lower()}_{pair_key}.pkl")
+                        joblib.dump(best_model, model_path)
+                        logging.info(f"Melhor modelo ({best_name}) salvo em: {model_path}")
+                        compare_models(X_clean, y_clean, kfolds=args.kfolds, pair_name=pair_key,
+                                    plots_folder=ANALYSIS_FOLDER, poly_degree=args.poly_degree,
+                                    n_estimators=args.n_estimators, test_size=args.validation_split)
+                    else:
+                        logging.warning(f"Não foi possível determinar o melhor modelo para {pair_key}.")
+
+               
 
     if args.action in ['all', 'profit']:
         if not all_processed_dfs:
