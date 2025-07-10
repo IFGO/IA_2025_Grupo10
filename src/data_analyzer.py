@@ -1,3 +1,28 @@
+# -*- coding: utf-8 -*-
+
+"""
+Ferramentas de Análise de Dados de Criptoativos.
+
+Este módulo fornece um conjunto de funções para realizar análises estatísticas
+e visuais sobre dados históricos de preços de criptoativos. Ele utiliza as
+bibliotecas Pandas para manipulação de dados, Matplotlib e Seaborn para a
+geração de gráficos, e o módulo logging para registrar o progresso e possíveis
+avisos.
+
+As funcionalidades principais incluem:
+- Cálculo de estatísticas descritivas detalhadas (média, desvio padrão,
+  curtose, etc.).
+- Geração de um painel de visualização consolidado, incluindo:
+  - Histórico de preços em escala linear e logarítmica.
+  - Histograma de distribuição de preços.
+  - Boxplot para análise de quartis e detecção de outliers.
+- Análise comparativa da volatilidade entre diferentes ativos, utilizando o
+  Coeficiente de Variação para uma medição relativa.
+
+As funções são projetadas para serem robustas, tratando casos de dados ausentes
+ou inválidos e salvando os resultados gráficos em arquivos de imagem para fácil
+consulta.
+"""
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
@@ -119,21 +144,27 @@ def generate_analysis_plots(df: pd.DataFrame, pair_name: str, save_folder: str):
 
 
 def calculate_comparative_variability(all_data: Dict[str, pd.DataFrame]) -> pd.DataFrame:
-    """Calcula e compara a variabilidade entre múltiplos ativos usando operações vetorizadas.
+    """
+    Calcula e compara a variabilidade entre múltiplos ativos.
 
-    Usa o Coeficiente de Variação (CV) para medir a variabilidade relativa
-    dos preços de fechamento de cada ativo. A função é otimizada para performance,
-    evitando laços explícitos em favor de cálculos vetorizados com Pandas.
+    Esta função mede a variabilidade relativa dos preços de fechamento de cada
+    ativo utilizando o Coeficiente de Variação (CV). O CV é útil para comparar
+    a volatilidade entre ativos com diferentes escalas de preço. A função opera
+    de forma eficiente, evitando laços explícitos em favor de cálculos
+    vetorizados com Pandas sempre que possível.
 
     Args:
         all_data (Dict[str, pd.DataFrame]): Um dicionário onde as chaves são os
                                             nomes dos ativos e os valores são
-                                            os DataFrames correspondentes.
+                                            os DataFrames correspondentes com
+                                            os dados históricos.
 
     Returns:
-        pd.DataFrame: Um DataFrame ordenado pelo Coeficiente de Variação (do
-                      maior para o menor), contendo o preço médio, o desvio
-                      padrão e o CV para cada ativo.
+        pd.DataFrame: Um DataFrame ordenado pelo Coeficiente de Variação
+                      (do maior para o menor), contendo o preço médio, o desvio
+                      padrão (variabilidade absoluta) e o CV (variabilidade
+                      relativa) para cada ativo. Retorna um DataFrame vazio se
+                      nenhum dado válido for encontrado.
     """
     results = []
     for name, df in all_data.items():
