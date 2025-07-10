@@ -67,8 +67,8 @@ def calculate_financial_indicators(df: pd.DataFrame, window: int = 20) -> pd.Dat
     df['short_mavg'] = df['close'].rolling(window=short_window).mean()
     df['long_mavg'] = df['close'].rolling(window=long_window).mean()
     
-    previous_short_mavg = np.roll(df['short_mavg'], 1)
-    previous_long_mavg = np.roll(df['long_mavg'], 1)
+    previous_short_mavg = df['short_mavg'].shift(1)
+    previous_long_mavg = df['long_mavg'].shift(1)
     # Cria o sinal de negociação baseado no cruzamento das médias móveis (+1 comprar, -1 vender, 0 manter)
     # np.roll é usado para obter o valor anterior sem perder o alinhamento do índice
     df['signal'] = np.where(
