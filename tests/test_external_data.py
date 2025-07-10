@@ -1,7 +1,6 @@
-
-import pytest
-from datetime import datetime, timedelta
+from datetime import datetime
 from src.external_data import fetch_usd_brl_bacen
+
 
 def test_fetch_usd_brl_bacen_range():
     start_date = "2019-01-01"

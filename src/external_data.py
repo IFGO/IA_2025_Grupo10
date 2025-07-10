@@ -15,6 +15,7 @@ import requests
 import logging
 from datetime import datetime, timedelta
 
+
 def fetch_usd_brl_bacen(start_date: str, end_date: str) -> pd.DataFrame:
     """
     Busca a série temporal da cotação de venda USD/BRL do Banco Central do Brasil.
@@ -36,7 +37,7 @@ def fetch_usd_brl_bacen(start_date: str, end_date: str) -> pd.DataFrame:
     """
     try:
         start_dt = datetime.strptime(start_date, "%Y-%m-%d")
-        end_dt   = datetime.strptime(end_date,   "%Y-%m-%d")
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d")
 
         all_data = []
 
@@ -44,7 +45,7 @@ def fetch_usd_brl_bacen(start_date: str, end_date: str) -> pd.DataFrame:
             block_end = min(start_dt + timedelta(days=3652), end_dt)
 
             start_fmt = start_dt.strftime("%d/%m/%Y")
-            end_fmt   = block_end.strftime("%d/%m/%Y")
+            end_fmt = block_end.strftime("%d/%m/%Y")
 
             url = (
                 "https://api.bcb.gov.br/dados/serie/bcdata.sgs.1/dados"
@@ -52,24 +53,24 @@ def fetch_usd_brl_bacen(start_date: str, end_date: str) -> pd.DataFrame:
             )
 
             headers = {"Accept": "application/json"}
-            response = requests.get(url, headers=headers,timeout=30)
+            response = requests.get(url, headers=headers, timeout=30)
             response.raise_for_status()
             data = response.json()
 
             if data:
                 df = pd.DataFrame(data)
-                all_data.append(df)
+                all_data.append(df)  # type: ignore
 
             start_dt = block_end + timedelta(days=1)
         if not all_data:
             logging.warning("Nenhum dado encontrado para o período especificado.")
             return pd.DataFrame()
 
-        df_all = pd.concat(all_data, ignore_index=True)
-        df_all["date"] = pd.to_datetime(df_all["data"], format="%d/%m/%Y")
-        df_all["usd_brl"] = df_all["valor"].str.replace(",", ".").astype(float)
+        df_all = pd.concat(all_data, ignore_index=True)  # type: ignore
+        df_all["date"] = pd.to_datetime(df_all["data"], format="%d/%m/%Y")  # type: ignore
+        df_all["usd_brl"] = df_all["valor"].str.replace(",", ".").astype(float)  # type: ignore
 
-        return df_all[["date", "usd_brl"]].sort_values("date")
+        return df_all[["date", "usd_brl"]].sort_values("date")  # type: ignore
 
     except Exception as e:
         print(f"[ERRO] Falha ao buscar USD/BRL do BACEN: {e}")

@@ -24,23 +24,19 @@ import pandas as pd
 import numpy as np
 import logging
 import os
-import joblib
+import joblib  # type: ignore
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.neural_network import MLPRegressor
-from sklearn.linear_model import LinearRegression
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.pipeline import make_pipeline
+
 
 def simulate_investment_and_profit(
     X: pd.DataFrame,
-    y: pd.Series,
-    dates: pd.Series,
+    y: pd.Series,  # type: ignore
+    dates: pd.Series,  # type: ignore
     pair_name: str,
     models_folder: str,
     profit_plots_folder: str,
-    initial_investment: float = 1000.0
+    initial_investment: float = 1000.0,
 ):
     """
     Simula um investimento, calcula o lucro e plota a evolução do capital.
@@ -69,64 +65,74 @@ def simulate_investment_and_profit(
         - Salva um gráfico (.png) da evolução do lucro no `profit_plots_folder`.
         - Registra o progresso da simulação e eventuais avisos no log.
     """
-    logging.info(f"Simulando investimento e lucro de forma vetorizada para {pair_name}...")
+    logging.info(
+        f"Simulando investimento e lucro de forma vetorizada para {pair_name}..."
+    )
 
-    model_types = ['mlp', 'linear', 'polynomial', 'randomforest']
+    model_types = ["mlp", "linear", "polynomial", "randomforest"]
     loaded_models = {}
     for m_type in model_types:
-        model_filename = os.path.join(models_folder, f"{m_type}_{pair_name.replace(' ', '_')}.pkl")
+        model_filename = os.path.join(
+            models_folder, f"{m_type}_{pair_name.replace(' ', '_')}.pkl"
+        )
         if os.path.exists(model_filename):
             try:
-                loaded_models[m_type] = joblib.load(model_filename)
+                loaded_models[m_type] = joblib.load(model_filename)  # type: ignore
             except Exception as e:
                 logging.error(f"Falha ao carregar o modelo {m_type}: {e}")
         else:
-            logging.warning(f"Modelo {m_type} não encontrado em {model_filename}. Ignorando.")
+            logging.warning(
+                f"Modelo {m_type} não encontrado em {model_filename}. Ignorando."
+            )
 
     if not loaded_models:
         logging.error(f"Nenhum modelo carregado para {pair_name}. Simulação cancelada.")
         return
 
-    data_df = pd.DataFrame({'date': dates, 'close': y}).set_index(X.index)
-    data_df = pd.concat([data_df, X], axis=1).sort_values('date').reset_index(drop=True)
-    
-    profit_evolution = pd.DataFrame({'date': data_df['date']})
+    data_df = pd.DataFrame({"date": dates, "close": y}).set_index(X.index)  # type: ignore
+    data_df = pd.concat([data_df, X], axis=1).sort_values("date").reset_index(drop=True)  # type: ignore
 
-    for model_key, model in loaded_models.items():
+    profit_evolution = pd.DataFrame({"date": data_df["date"]})
+
+    for model_key, model in loaded_models.items():  # type: ignore
         logging.info(f"Executando simulação vetorizada para o modelo: {model_key}")
-        
-        all_predictions = model.predict(data_df[X.columns])
-        
-        last_known_price = data_df['close'].shift(1).fillna(0)
-        signals = np.where(all_predictions > last_known_price, 1, 0)
-        signals = pd.Series(signals, index=data_df.index).shift(1).fillna(0)
 
-        daily_returns = data_df['close'].pct_change().fillna(0)
-        
+        all_predictions = model.predict(data_df[X.columns])  # type: ignore
+
+        last_known_price = data_df["close"].shift(1).fillna(0)  # type: ignore
+        signals = np.where(all_predictions > last_known_price, 1, 0)  # type: ignore
+        signals = pd.Series(signals, index=data_df.index).shift(1).fillna(0)  # type: ignore
+
+        daily_returns = data_df["close"].pct_change().fillna(0)  # type: ignore
+
         strategy_returns = daily_returns * signals
-        
-        cumulative_returns = (1 + strategy_returns).cumprod()
-        
-        profit_evolution[f'balance_{model_key}'] = initial_investment * cumulative_returns
 
-    plt.figure(figsize=(16, 9))
+        cumulative_returns = (1 + strategy_returns).cumprod()
+
+        profit_evolution[f"balance_{model_key}"] = (
+            initial_investment * cumulative_returns
+        )
+
+    plt.figure(figsize=(16, 9))  # type: ignore
     sns.set_palette("tab10")
 
-    for model_key in loaded_models.keys():
-        col_name = f'balance_{model_key}'
+    for model_key in loaded_models.keys():  # type: ignore
+        col_name = f"balance_{model_key}"
         if col_name in profit_evolution.columns:
-            plt.plot(profit_evolution['date'], profit_evolution[col_name], label=f'Modelo: {model_key.upper()}')
+            plt.plot(profit_evolution["date"], profit_evolution[col_name], label=f"Modelo: {model_key.upper()}")  # type: ignore
 
-    plt.title(f'Evolução do Lucro com Investimento de ${initial_investment:,.2f} - {pair_name}', fontsize=16)
-    plt.xlabel('Data', fontsize=12)
-    plt.ylabel('Saldo Acumulado (USDT)', fontsize=12)
-    plt.grid(True, linestyle='--', linewidth=0.5)
-    plt.legend()
+    plt.title(f"Evolução do Lucro com Investimento de ${initial_investment:,.2f} - {pair_name}", fontsize=16)  # type: ignore
+    plt.xlabel("Data", fontsize=12)  # type: ignore
+    plt.ylabel("Saldo Acumulado (USDT)", fontsize=12)  # type: ignore
+    plt.grid(True, linestyle="--", linewidth=0.5)  # type: ignore
+    plt.legend()  # type: ignore
     plt.tight_layout()
     plt.gcf().autofmt_xdate()
     if not os.path.exists(profit_plots_folder):
         os.makedirs(profit_plots_folder)
-    plot_path = os.path.join(profit_plots_folder, f"profit_evolution_{pair_name.replace(' ', '_')}.png")
-    plt.savefig(plot_path, dpi=150)
+    plot_path = os.path.join(
+        profit_plots_folder, f"profit_evolution_{pair_name.replace(' ', '_')}.png"
+    )
+    plt.savefig(plot_path, dpi=150)  # type: ignore
     plt.close()
     logging.info(f"Gráfico de evolução do lucro salvo em: {plot_path}")

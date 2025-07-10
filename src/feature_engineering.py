@@ -27,12 +27,14 @@ de features sejam combinadas conforme a necessidade.
 import pandas as pd
 import numpy as np
 from typing import List
-import ta
-import logging 
+import ta  # type: ignore
+import logging
 from src.external_data import fetch_usd_brl_bacen
 
 
-def enrich_with_external_features(df: pd.DataFrame, use_usd_brl: bool = True) -> pd.DataFrame:
+def enrich_with_external_features(
+    df: pd.DataFrame, use_usd_brl: bool = True
+) -> pd.DataFrame:
     """
     Enriquece o DataFrame com dados macroeconômicos externos.
 
@@ -52,21 +54,23 @@ def enrich_with_external_features(df: pd.DataFrame, use_usd_brl: bool = True) ->
                       DataFrame original com um aviso.
     """
     if use_usd_brl:
-        start = df["date"].min().strftime("%Y-%m-%d")
-        end = df["date"].max().strftime("%Y-%m-%d")
-        usd_brl_df = fetch_usd_brl_bacen(start, end)
+        start = df["date"].min().strftime("%Y-%m-%d")  # type: ignore
+        end = df["date"].max().strftime("%Y-%m-%d")  # type: ignore
+        usd_brl_df = fetch_usd_brl_bacen(start, end)  # type: ignore
 
         if not usd_brl_df.empty:
-            df = pd.merge(df, usd_brl_df, on="date", how="left")
-            if 'usd_brl' in df.columns:
-                df['usd_brl'] = df['usd_brl'].astype(np.float32)
+            df = pd.merge(df, usd_brl_df, on="date", how="left")  # type: ignore
+            if "usd_brl" in df.columns:
+                df["usd_brl"] = df["usd_brl"].astype(np.float32)
         else:
             logging.warning("Cotação USD/BRL não foi adicionada (dados indisponíveis).")
 
     return df
 
 
-def create_moving_average_features(df: pd.DataFrame, windows: List[int]) -> pd.DataFrame:
+def create_moving_average_features(
+    df: pd.DataFrame, windows: List[int]
+) -> pd.DataFrame:
     """
     Cria features baseadas em médias móveis para uma lista de janelas de tempo.
 
@@ -85,17 +89,24 @@ def create_moving_average_features(df: pd.DataFrame, windows: List[int]) -> pd.D
     df_featured = df.copy()
     for window in windows:
         if len(df_featured) >= window:
-            df_featured[f'sma_{window}'] = df_featured['close'].rolling(window=window).mean()
-            df_featured[f'std_{window}'] = df_featured['close'].rolling(window=window).std()
+            df_featured[f"sma_{window}"] = (
+                df_featured["close"].rolling(window=window).mean()
+            )
+            df_featured[f"std_{window}"] = (
+                df_featured["close"].rolling(window=window).std()
+            )
         else:
-            df_featured[f'sma_{window}'] = np.nan
-            df_featured[f'std_{window}'] = np.nan
-            logging.warning(f"DataFrame muito curto para calcular SMA/STD com janela {window}. Atribuindo NaN.")
+            df_featured[f"sma_{window}"] = np.nan
+            df_featured[f"std_{window}"] = np.nan
+            logging.warning(
+                f"DataFrame muito curto para calcular SMA/STD com janela {window}. Atribuindo NaN."
+            )
 
     return df_featured
 
+
 def create_technical_features(df: pd.DataFrame) -> pd.DataFrame:
-    """"
+    """ "
     Adiciona um conjunto abrangente de features de análise técnica ao DataFrame.
 
     Esta função atua como um pipeline principal para a engenharia de features,
@@ -114,32 +125,35 @@ def create_technical_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     df_featured = df.copy()
 
-    windows = [7, 14, 30] 
-    df_featured = create_moving_average_features(df_featured, windows) 
-    
-    df_featured['daily_return'] = df_featured['close'].pct_change()
+    windows = [7, 14, 30]
+    df_featured = create_moving_average_features(df_featured, windows)
+
+    df_featured["daily_return"] = df_featured["close"].pct_change()
 
     if len(df_featured) >= 7:
-        df_featured['volatility_7d'] = df_featured['daily_return'].rolling(window=7).std() * np.sqrt(7)
+        df_featured["volatility_7d"] = df_featured["daily_return"].rolling(
+            window=7
+        ).std() * np.sqrt(7)
     else:
-        df_featured['volatility_7d'] = np.nan
+        df_featured["volatility_7d"] = np.nan
         logging.warning("DataFrame muito curto para calcular volatility_7d.")
 
     if len(df_featured) >= 30:
-        df_featured['volatility_30d'] = df_featured['daily_return'].rolling(window=30).std() * np.sqrt(30)
+        df_featured["volatility_30d"] = df_featured["daily_return"].rolling(
+            window=30
+        ).std() * np.sqrt(30)
     else:
-        df_featured['volatility_30d'] = np.nan
+        df_featured["volatility_30d"] = np.nan
         logging.warning("DataFrame muito curto para calcular volatility_30d.")
 
+    df_featured["close_lag1"] = df_featured["close"].shift(1)
+    df_featured["close_lag5"] = df_featured["close"].shift(5)
 
-    df_featured['close_lag1'] = df_featured['close'].shift(1)
-    df_featured['close_lag5'] = df_featured['close'].shift(5) 
-
-    required_cols = ['open', 'high', 'low', 'close']
+    required_cols = ["open", "high", "low", "close"]
     missing_cols = [col for col in required_cols if col not in df_featured.columns]
 
     volume_col = None
-    for candidate in ['volume', 'volume_eth', 'volume_usdt']:
+    for candidate in ["volume", "volume_eth", "volume_usdt"]:
         if candidate in df_featured.columns:
             volume_col = candidate
             break
@@ -148,38 +162,39 @@ def create_technical_features(df: pd.DataFrame) -> pd.DataFrame:
         logging.warning(
             "Colunas ausentes para cálculo técnico: %s. Colunas de volume disponíveis: %s. Colunas no DataFrame: %s",
             missing_cols,
-            [col for col in df_featured.columns if 'volume' in col],
-            df_featured.columns.tolist()
+            [col for col in df_featured.columns if "volume" in col],
+            df_featured.columns.tolist(),
         )
-    else:        
+    else:
         if len(df_featured) >= 14:
-            df_featured['rsi'] = ta.momentum.RSIIndicator(close=df_featured['close'], window=14).rsi()
+            df_featured["rsi"] = ta.momentum.RSIIndicator(close=df_featured["close"], window=14).rsi()  # type: ignore
         else:
-            df_featured['rsi'] = np.nan
+            df_featured["rsi"] = np.nan
             logging.warning("DataFrame muito curto para calcular RSI.")
-        
-        if len(df_featured) >= 26:
-            macd = ta.trend.MACD(close=df_featured['close'])
-            df_featured['macd'] = macd.macd()
-            df_featured['macd_signal'] = macd.macd_signal()
-            df_featured['macd_diff'] = macd.macd_diff()
-        else:
-            df_featured['macd'] = np.nan
-            df_featured['macd_signal'] = np.nan
-            df_featured['macd_diff'] = np.nan
-            
-        if len(df_featured) >= 20:
-            boll = ta.volatility.BollingerBands(close=df_featured['close'], window=20)
-            df_featured['bb_upper'] = boll.bollinger_hband()
-            df_featured['bb_lower'] = boll.bollinger_lband()
-            df_featured['bb_mavg'] = boll.bollinger_mavg()
-        else:
-            df_featured['bb_upper'] = df_featured['bb_lower'] = df_featured['bb_mavg'] = np.nan            
 
-        df_featured['obv'] = ta.volume.OnBalanceVolumeIndicator(
-            close=df_featured['close'],
-            volume=df_featured[volume_col]
+        if len(df_featured) >= 26:
+            macd = ta.trend.MACD(close=df_featured["close"])  # type: ignore
+            df_featured["macd"] = macd.macd()  # type: ignore
+            df_featured["macd_signal"] = macd.macd_signal()  # type: ignore
+            df_featured["macd_diff"] = macd.macd_diff()  # type: ignore
+        else:
+            df_featured["macd"] = np.nan
+            df_featured["macd_signal"] = np.nan
+            df_featured["macd_diff"] = np.nan
+
+        if len(df_featured) >= 20:
+            boll = ta.volatility.BollingerBands(close=df_featured["close"], window=20)  # type: ignore
+            df_featured["bb_upper"] = boll.bollinger_hband()  # type: ignore
+            df_featured["bb_lower"] = boll.bollinger_lband()  # type: ignore
+            df_featured["bb_mavg"] = boll.bollinger_mavg()  # type: ignore
+        else:
+            df_featured["bb_upper"] = df_featured["bb_lower"] = df_featured[
+                "bb_mavg"
+            ] = np.nan
+
+        df_featured["obv"] = ta.volume.OnBalanceVolumeIndicator(  # type: ignore
+            close=df_featured["close"], volume=df_featured[volume_col]
         ).on_balance_volume()
 
-    df_featured = df_featured.dropna()
+    df_featured = df_featured.dropna()  # type: ignore
     return df_featured

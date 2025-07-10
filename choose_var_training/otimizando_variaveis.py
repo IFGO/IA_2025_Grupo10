@@ -1,72 +1,76 @@
 import pandas as pd
-import numpy as np
 import glob
 import os
-import statsmodels as sm
-import scipy.stats as stats
-import statsmodels.formula.api as smf
-
+import statsmodels as sm  # type: ignore
+import scipy.stats as stats  # type: ignore
+import statsmodels.formula.api as smf  # type: ignore
 
 
 # Caminho para os arquivos processados
-processed_folder = os.path.join('..', 'data', 'processed') if not os.path.exists('data/processed') else 'data/processed'
+processed_folder = (
+    os.path.join("..", "data", "processed")
+    if not os.path.exists("data/processed")
+    else "data/processed"
+)
 
-csv_files = glob.glob(os.path.join(processed_folder, '*.csv'))
-
+csv_files = glob.glob(os.path.join(processed_folder, "*.csv"))
 
 
 for csv_path in csv_files:
 
     filename = os.path.basename(csv_path)
-    if 'BHC_USDT' in filename:
-        volume_col = 'volume_bhc'
-    elif 'BTC_USDT' in filename:
-        volume_col = 'volume_btc'
-    elif 'BHC_USDT' in filename:
-        volume_col = 'volume_bhc'
-    elif 'DASH_USDT' in filename:
-        volume_col = 'volume_dash'
-    elif 'EOS_USDT' in filename:
-        volume_col = 'volume_eos'
-    elif 'ETC_USDT' in filename:
-        volume_col = 'volume_etc'
-    elif 'ETH_USDT' in filename:
-        volume_col = 'volume_eth'
-    elif 'LTC_USDT' in filename:
-        volume_col = 'volume_ltc' 
-    elif 'XMR_USDT' in filename:
-        volume_col = 'volume_xmr'
-    elif 'XRP_USDT' in filename:
-        volume_col = 'volume_xrp'
-    elif 'ZRX_USDT' in filename:
-        volume_col = 'volume_zrx'
+    if "BHC_USDT" in filename:
+        volume_col = "volume_bhc"
+    elif "BTC_USDT" in filename:
+        volume_col = "volume_btc"
+    elif "BHC_USDT" in filename:
+        volume_col = "volume_bhc"
+    elif "DASH_USDT" in filename:
+        volume_col = "volume_dash"
+    elif "EOS_USDT" in filename:
+        volume_col = "volume_eos"
+    elif "ETC_USDT" in filename:
+        volume_col = "volume_etc"
+    elif "ETH_USDT" in filename:
+        volume_col = "volume_eth"
+    elif "LTC_USDT" in filename:
+        volume_col = "volume_ltc"
+    elif "XMR_USDT" in filename:
+        volume_col = "volume_xmr"
+    elif "XRP_USDT" in filename:
+        volume_col = "volume_xrp"
+    elif "ZRX_USDT" in filename:
+        volume_col = "volume_zrx"
     # Adicione outras condições 'elif' para outros pares, se necessário
     else:
         # Se não encontrar um padrão conhecido, use 'volume' como padrão ou pule o arquivo
-        print(f"Warning: Não foi possível determinar a coluna volume em {filename}. Pulando.")
+        print(
+            f"Warning: Não foi possível determinar a coluna volume em {filename}. Pulando."
+        )
         continue
 
-    df = pd.read_csv(csv_path)
+    df = pd.read_csv(csv_path)  # type: ignore
     # Remove a coluna 'date' se existir
-    if 'date' in df.columns:
-        df = df.drop(columns=['date'])
+    if "date" in df.columns:
+        df = df.drop(columns=["date"])
     # Calcula a matriz de correlação
-    #analise com todas as variáveis
-    #modelo = smf.ols(f'close ~ open+high+low+{volume_col}+buytakeramount+buytakerquantity+weightedaverage+sma_7+std_7+sma_14+std_14+sma_30+std_30+daily_return+volatility_7d+volatility_30d+close_lag1+close_lag5+rsi+macd+macd_signal+macd_diff+bb_upper+bb_lower+bb_mavg+obv',data = df)
-    #analise com dados otimizados, escolhidos conforme comentário ao fim do código
-    modelo = smf.ols(
-      f'close ~ high + low + sma_7 + sma_14 + sma_30 + '
-      f'close_lag5 + macd + macd_signal + macd_diff + '
-      f'bb_upper + bb_lower + bb_mavg + daily_return',
-      data=df
-    )modelo =  modelo.fit()
+    # analise com todas as variáveis
+    # modelo = smf.ols(f'close ~ open+high+low+{volume_col}+buytakeramount+buytakerquantity+weightedaverage+sma_7+std_7+sma_14+std_14+sma_30+std_30+daily_return+volatility_7d+volatility_30d+close_lag1+close_lag5+rsi+macd+macd_signal+macd_diff+bb_upper+bb_lower+bb_mavg+obv',data = df)
+    # analise com dados otimizados, escolhidos conforme comentário ao fim do código
+    modelo = smf.ols(  # type: ignore
+        f"close ~ high + low + sma_7 + sma_14 + sma_30 + "
+        f"close_lag5 + macd + macd_signal + macd_diff + "
+        f"bb_upper + bb_lower + bb_mavg + daily_return",
+        data=df,
+    )
+    modelo = modelo.fit()  # type: ignore
 
-    print(csv_path,"-" * 50)
-    print(formula)
+    print(csv_path, "-" * 50)
+    print(formula)  # type: ignore
     print("-" * 70)
     print(modelo.summary())
 
-'''
+"""
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Resultado encontrado com todas as variáveis dos arquivos featured:
@@ -1035,4 +1039,4 @@ Número de variáveis	            25+	                            14
 Estabilidade numérica	        Baixa (singularidade)	        Alta (relatórios completos)
 Eigenvalue mínima	            ~1e-28 a 1e-30	                ~1e-22 (melhor)
 
-'''
+"""
