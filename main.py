@@ -233,6 +233,31 @@ def main():
 
     if args.action in ['all', 'stats']:
         logging.info("Iniciando testes estatísticos avançados.")
+
+        #caso esteja executando só stats, sem ter executado all
+        if args.action == 'stats':
+            for simbolo_base in CRIPTOS_PARA_BAIXAR:
+                if args.crypto != 'all' and simbolo_base != args.crypto:
+                    continue
+                
+                nome_arquivo = f"{simbolo_base.upper()}_{MOEDA_COTACAO.upper()}_{TIMEFRAME}.csv"
+                caminho_arquivo = os.path.join(OUTPUT_FOLDER, nome_arquivo)
+                
+                # Verifica se o arquivo já existe, se nao conseguir ler o arquivo com pd.read_csv(caminho_arquivo) ou o arquivo estiver vazio logging.error(f"Erro ao ler o arquivo {caminho_arquivo}. Verifique se o arquivo existe e está no formato correto. Você deve executar antes python main.py --action download.")
+                if os.path.exists(caminho_arquivo):
+                    df = pd.read_csv(caminho_arquivo)
+                    all_dfs[f"{simbolo_base.upper()}_{MOEDA_COTACAO.upper()}"] = df
+                    continue
+                #se o arquivo não existir ou estiver vazio, apresenta a mensagem
+                logging.error(f"Erro ao ler o arquivo {caminho_arquivo}. Verifique se o arquivo existe e está no formato correto.")
+                
+        
+        #se all_dfs estiver vazio, significa que não foram baixados dados, então não faz sentido continuar
+        if not all_dfs:
+            logging.error("Nenhum dado disponível para análise. Execute primeiro a ação 'download' com python main.py --action download, para criar os arquivos de todas as moedas ou informando a criptomoeda desejada com o parâmetro crypto.")
+            return
+
+
         for pair_key, df in all_dfs.items():
             if args.crypto != 'all' and pair_key.split('_')[0] != args.crypto:
                 continue
