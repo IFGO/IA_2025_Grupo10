@@ -203,4 +203,4 @@ A pasta `choose_var_training/` contém scripts para análise exploratória e sel
 Esses scripts auxiliam na análise de multicolinearidade, importância e seleção das melhores features para os modelos de previsão.
 
 
-Desenvolvido por: Thales Augusto Salvador, Carlos Henrique, Miguel Toledo(2025)
+Desenvolvido por: Thales Augusto Salvador, Carlos Henrique Barbosa da Silva, Miguel Toledo(2025)
