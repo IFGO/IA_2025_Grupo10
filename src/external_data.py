@@ -1,3 +1,15 @@
+# -*- coding: utf-8 -*-
+"""
+Coleta de Dados Financeiros de Fontes Externas.
+
+Este módulo contém funções para buscar dados financeiros de APIs públicas,
+como a do Banco Central do Brasil (BACEN). O objetivo é encapsular a lógica
+de comunicação com essas fontes, tratando da paginação, formatação dos dados
+e tratamento de erros, e entregando um DataFrame limpo e pronto para uso.
+
+A principal funcionalidade implementada é a busca da série histórica da cotação
+de venda do dólar (USD/BRL).
+"""
 import pandas as pd
 import requests
 import logging
@@ -5,20 +17,22 @@ from datetime import datetime, timedelta
 
 def fetch_usd_brl_bacen(start_date: str, end_date: str) -> pd.DataFrame:
     """
-    Busca a série temporal da cotação de venda USD/BRL do Banco Central.
+    Busca a série temporal da cotação de venda USD/BRL do Banco Central do Brasil.
 
-    A função lida automaticamente com pedidos para períodos superiores a 10
-    anos, quebrando a consulta em múltiplos pedidos à API para contornar
-    as limitações do serviço.
+    Esta função consulta a API de Séries Temporais do BACEN para obter a cotação
+    diária de venda do dólar. Ela foi projetada para lidar com períodos de
+    consulta longos (superiores a 10 anos), quebrando a requisição em múltiplos
+    pedidos menores para contornar as limitações do serviço da API.
 
     Args:
         start_date (str): A data de início para a consulta, no formato "YYYY-MM-DD".
         end_date (str): A data de fim para a consulta, no formato "YYYY-MM-DD".
 
     Returns:
-        pd.DataFrame: Um DataFrame contendo as colunas 'date' e 'usd_brl'
-                      com os dados da cotação. Retorna um DataFrame vazio
-                      em caso de falha na comunicação com a API.
+        pd.DataFrame: Um DataFrame do Pandas contendo as colunas 'date' (em formato
+                      datetime) e 'usd_brl' (cotação de venda como float). Retorna
+                      um DataFrame vazio em caso de falha na comunicação com a API
+                      ou se nenhum dado for encontrado para o período.
     """
     try:
         start_dt = datetime.strptime(start_date, "%Y-%m-%d")

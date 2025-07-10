@@ -1,3 +1,25 @@
+# -*- coding: utf-8 -*-
+"""
+Simulação de Lucro e Backtesting de Estratégias de Investimento.
+
+Este módulo é dedicado a simular o desempenho de uma estratégia de investimento
+baseada nas previsões de modelos de machine learning. Ele utiliza uma abordagem
+vetorizada para garantir alta performance ao calcular os retornos de uma
+carteira ao longo do tempo.
+
+Funcionalidades Principais:
+-   **Carregamento de Modelos:** Carrega modelos de regressão pré-treinados
+    (ex: MLP, Linear, RandomForest) a partir de arquivos.
+-   **Geração de Sinais de Negociação:** Cria sinais de compra/venda com base
+    em uma lógica simples: se o preço previsto para o dia seguinte for maior
+    que o preço atual, um sinal de compra (manter posição) é gerado.
+-   **Cálculo de Retorno Vetorizado:** Simula a evolução de um investimento
+    inicial aplicando os sinais de negociação aos retornos diários do ativo,
+    tudo de forma eficiente com Pandas e NumPy.
+-   **Visualização de Desempenho:** Gera e salva um gráfico que compara a
+    evolução do saldo (lucro/prejuízo) para cada um dos modelos testados,
+    permitindo uma análise visual de qual modelo teria gerado o melhor retorno.
+"""
 import pandas as pd
 import numpy as np
 import logging
@@ -21,21 +43,31 @@ def simulate_investment_and_profit(
     initial_investment: float = 1000.0
 ):
     """
-    Simula um investimento e calcula o lucro de forma vetorizada.
+    Simula um investimento, calcula o lucro e plota a evolução do capital.
 
-    Esta função carrega modelos pré-treinados, gera previsões de preço,
-    cria sinais de negociação e calcula a evolução de um investimento inicial
-    usando operações vetorizadas para máxima performance. Por fim, plota o
+    Esta função realiza um backtest de uma estratégia de negociação simples. Ela
+    carrega modelos pré-treinados, utiliza-os para prever os preços futuros e
+    gera sinais de negociação com base nessas previsões. A lógica da estratégia é:
+    manter o ativo (sinal=1) se o preço previsto for maior que o preço conhecido
+    anterior; caso contrário, ficar fora do mercado (sinal=0).
+
+    O cálculo da evolução do investimento é feito de forma vetorizada para máxima
+    performance. Por fim, a função gera e salva um gráfico comparando o
     desempenho de cada modelo.
 
     Args:
-        X (pd.DataFrame): DataFrame com as features de entrada.
+        X (pd.DataFrame): DataFrame com as features de entrada para os modelos.
         y (pd.Series): Series com a variável alvo (preço de fecho real).
         dates (pd.Series): Series com as datas correspondentes aos dados.
-        pair_name (str): Nome do par de moedas para nomear ficheiros.
-        models_folder (str): Diretório onde os modelos treinados estão guardados.
+        pair_name (str): Nome do par de moedas, usado para nomear arquivos.
+        models_folder (str): Diretório onde os modelos treinados (.pkl) estão guardados.
         profit_plots_folder (str): Diretório para salvar os gráficos de lucro.
-        initial_investment (float): O valor inicial do investimento.
+        initial_investment (float, optional): O valor inicial do investimento em USDT.
+                                               Padrão é 1000.0.
+
+    Side Effects:
+        - Salva um gráfico (.png) da evolução do lucro no `profit_plots_folder`.
+        - Registra o progresso da simulação e eventuais avisos no log.
     """
     logging.info(f"Simulando investimento e lucro de forma vetorizada para {pair_name}...")
 

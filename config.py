@@ -1,3 +1,41 @@
+# -*- coding: utf-8 -*-
+"""
+Arquivo de Configuração Central do Projeto.
+
+Este módulo centraliza todas as variáveis de configuração e parâmetros
+utilizados nas diferentes etapas do projeto de análise e modelagem de
+criptoativos. O objetivo é facilitar a manutenção, a experimentação e a
+reprodutibilidade, permitindo que as configurações sejam alteradas em um
+único local sem a necessidade de modificar o código-fonte dos scripts
+principais.
+
+As configurações estão agrupadas nas seguintes categorias:
+
+- **Parâmetros de Aquisição de Dados:**
+  - `CRIPTOS_PARA_BAIXAR`: Lista dos símbolos das criptomoedas a serem analisadas.
+  - `MOEDA_COTACAO`: A moeda base para a cotação (ex: 'USDT').
+  - `TIMEFRAME`: O intervalo de tempo dos dados (ex: 'd' para diário).
+
+- **Diretórios e Pastas:**
+  - Define os caminhos para salvar dados brutos, processados, modelos
+    treinados, gráficos, relatórios estatísticos e plots de lucro.
+
+- **Parâmetros de Modelagem:**
+  - `DEFAULT_KFOLDS`: Número padrão de folds para a validação cruzada.
+  - `DEFAULT_TARGET_RETURN_PERCENT`: Alvo de retorno para testes de hipótese.
+  - `DEFAULT_POLY_DEGREE`: Grau padrão para regressão polinomial.
+  - `N_ESTIMATORS_RF`: Número de estimadores para o modelo RandomForest.
+
+- **Parâmetros de Engenharia de Features:**
+  - `MOVING_AVERAGE_WINDOWS`: Janelas para cálculo de médias móveis.
+  - `FEATURES_SELECIONADAS`: Lista de features a serem usadas no treinamento do modelo.
+  - `USE_USD_BRL`: Flag para controlar a adição de dados externos (cotação USD/BRL).
+
+- **Parâmetros de Simulação e Log:**
+  - `INITIAL_INVESTMENT`: Valor do investimento inicial para simulações de lucro.
+  - `LOG_LEVEL`: Nível de verbosidade dos logs (ex: 'INFO', 'DEBUG').
+"""
+
 CRIPTOS_PARA_BAIXAR = [
         "BTC", "ETH" #, "LTC", "XRP", "BCH",
         #"XMR", "DASH", "ETC", "ZRX", "EOS"

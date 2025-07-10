@@ -1,3 +1,26 @@
+# -*- coding: utf-8 -*-
+"""
+Framework para Treinamento e Avaliação de Modelos de Regressão.
+
+Este módulo fornece um conjunto de ferramentas para treinar, avaliar, comparar
+e salvar múltiplos modelos de regressão utilizando a biblioteca scikit-learn.
+Ele foi projetado para automatizar o pipeline de modelagem para problemas de
+previsão de séries temporais financeiras.
+
+Funcionalidades Principais:
+-   **Suporte a Múltiplos Modelos:** Treina e avalia Regressão Linear,
+    Regressão Polinomial, Random Forest e Redes Neurais (MLP Regressor).
+-   **Validação Robusta:** Utiliza validação cruzada K-fold para obter
+    métricas de desempenho mais estáveis e um conjunto de hold-out para
+    uma avaliação final imparcial.
+-   **Avaliação Abrangente:** Calcula e reporta múltiplas métricas, incluindo
+    Mean Squared Error (MSE), Mean Absolute Error (MAE) e R-squared (R2).
+-   **Comparação e Análise:** Gera tabelas comparativas de desempenho,
+    identifica o melhor modelo com base no MSE e fornece visualizações
+    (diagramas de dispersão) e análise de coeficientes para modelos lineares.
+-   **Persistência de Modelos:** Salva os modelos treinados em disco usando
+    joblib para uso futuro.
+"""
 import pandas as pd
 import numpy as np
 import logging
@@ -27,17 +50,29 @@ def train_and_evaluate_model(
     test_size: float = 0.3
 ):
     """
-    Treina, avalia e salva um modelo de regressão usando K-fold cross-validation.
+    Treina, avalia e salva um único modelo de regressão usando K-fold e hold-out.
+
+    Esta função executa um pipeline completo para um tipo de modelo especificado.
+    Ela realiza a validação cruzada K-fold no conjunto de treino e, em seguida,
+    avalia o desempenho em um conjunto de validação final (hold-out). Por fim,
+    retreina o modelo com todos os dados e o salva em disco.
 
     Args:
-        X (pd.DataFrame): DataFrame com as features de entrada.
-        y (pd.Series): Series com a variável alvo.
-        model_type (str): O tipo de modelo a ser treinado ('MLP', 'Linear',
-                          'Polynomial', 'RandomForest').
+        X (pd.DataFrame): DataFrame com as features (variáveis independentes).
+        y (pd.Series): Series com a variável alvo (variável dependente).
+        model_type (str): O tipo de modelo a ser treinado. Opções: 'MLP',
+                          'Linear', 'Polynomial', 'RandomForest'.
         kfolds (int): O número de folds para a validação cruzada.
-        pair_name (str): O nome do par de moedas para nomear os ficheiros.
+        pair_name (str): O nome do par de moedas, usado para nomear os arquivos.
         models_folder (str): O diretório para salvar o modelo treinado.
-        poly_degree (int): O grau a ser usado na regressão polinomial.
+        poly_degree (int, optional): Grau a ser usado na Regressão Polinomial. Padrão é 2.
+        n_estimators (int, optional): Número de árvores no RandomForest. Padrão é 150.
+        test_size (float, optional): Proporção do dataset a ser usada como
+                                     conjunto de validação (hold-out). Padrão é 0.3.
+
+    Side Effects:
+        - Salva o modelo treinado como um arquivo .pkl no `models_folder`.
+        - Registra métricas detalhadas de desempenho no log.
     """
     logging.info(f"Iniciando treino e avaliação do modelo {model_type} para {pair_name}...")
 
@@ -141,13 +176,24 @@ def compare_models(
     """
     Compara múltiplos modelos de regressão, exibe métricas e gera gráficos.
 
+    Executa a validação cruzada K-fold para vários modelos, registra uma tabela
+    comparativa de desempenho, identifica o melhor regressor com base no MSE
+    médio e gera visualizações para análise.
+
     Args:
         X (pd.DataFrame): DataFrame com as features de entrada.
         y (pd.Series): Series com a variável alvo.
         kfolds (int): O número de folds para a validação cruzada.
-        pair_name (str): O nome do par de moedas para nomear os ficheiros.
+        pair_name (str): O nome do par de moedas para nomear os arquivos.
         plots_folder (str): O diretório para salvar os gráficos de comparação.
-        poly_degree (int): O grau a ser usado na regressão polinomial.
+        poly_degree (int, optional): Grau para a Regressão Polinomial. Padrão é 2.
+        n_estimators (int, optional): Número de árvores no RandomForest. Padrão é 150.
+        test_size (float, optional): Proporção para o conjunto de hold-out. Padrão é 0.3.
+
+    Side Effects:
+        - Registra uma tabela de comparação de modelos no log.
+        - Salva um diagrama de dispersão comparativo em `plots_folder`.
+        - Registra a análise de coeficientes para modelos lineares no log.
     """
     logging.info(f"Comparando modelos para {pair_name}...")
     
@@ -249,7 +295,23 @@ def compare_models(
 
 
 def _plot_scatter_comparison(X, y, models, pair_name, plots_folder):
-    """Função auxiliar para plotar o diagrama de dispersão de Real vs. Previsto."""
+    """
+    Plota um diagrama de dispersão comparando valores reais vs. previstos.
+
+    Para cada modelo fornecido, a função treina o modelo no conjunto de dados
+    completo, faz previsões e plota os resultados em um único gráfico de dispersão.
+    Inclui uma linha de referência ideal (y=x).
+
+    Args:
+        X (pd.DataFrame): DataFrame de features.
+        y (pd.Series): Series da variável alvo.
+        models (dict): Dicionário de modelos a serem plotados.
+        pair_name (str): Nome do par de moedas para o título do gráfico.
+        plots_folder (str): Pasta para salvar a imagem do gráfico.
+
+    Side Effects:
+        - Salva um arquivo de imagem .png no `plots_folder`.
+    """
     plt.figure(figsize=(12, 8))
     sns.set_palette("viridis")
     for model_name, model in models.items():
@@ -273,7 +335,22 @@ def _plot_scatter_comparison(X, y, models, pair_name, plots_folder):
 
 
 def _log_coefficients(X, y, models, pair_name):
-    """Função auxiliar para logar os coeficientes de modelos lineares."""
+    """
+    Registra os coeficientes e a equação para modelos lineares e polinomiais.
+
+    Esta função itera sobre os modelos e, para aqueles que são lineares ou
+    polinomiais, extrai seus coeficientes e intercepto para formar e registrar
+    a equação matemática do modelo.
+
+    Args:
+        X (pd.DataFrame): DataFrame de features.
+        y (pd.Series): Series da variável alvo.
+        models (dict): Dicionário de modelos para análise.
+        pair_name (str): Nome do par de moedas para o log.
+
+    Side Effects:
+        - Imprime a equação do modelo no log de informações.
+    """
     logging.info(f"Análise de Coeficientes e Equações para {pair_name}:")
     for model_name, model in models.items():
         if 'Linear' not in model_name and 'Polynomial' not in model_name:

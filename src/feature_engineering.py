@@ -1,3 +1,29 @@
+# -*- coding: utf-8 -*-
+"""
+Engenharia de Features para Dados Financeiros de Criptoativos.
+
+Este módulo fornece um conjunto de funções para criar e adicionar novas features
+(características) a um DataFrame de dados de séries temporais financeiras. O
+objetivo é enriquecer os dados brutos com informações que possam melhorar o
+desempenho de modelos de machine learning ou análises quantitativas.
+
+As funcionalidades incluem:
+-   **Enriquecimento com Dados Externos:** Adição de indicadores macroeconômicos,
+    como a taxa de câmbio USD/BRL.
+-   **Features de Médias Móveis:** Cálculo de médias móveis simples e desvios
+    padrão para diferentes janelas de tempo.
+-   **Indicadores de Análise Técnica:** Um pipeline completo que utiliza a
+    biblioteca 'ta' para calcular um vasto conjunto de indicadores, como:
+    -   Volatilidade (baseada nos retornos diários).
+    -   Features de Lag (preços de dias anteriores).
+    -   Índice de Força Relativa (RSI).
+    -   Convergência e Divergência de Médias Móveis (MACD).
+    -   Bandas de Bollinger (Bollinger Bands).
+    -   On-Balance Volume (OBV).
+
+O módulo foi projetado para ser modular, permitindo que as funções de criação
+de features sejam combinadas conforme a necessidade.
+"""
 import pandas as pd
 import numpy as np
 from typing import List
@@ -8,18 +34,22 @@ from src.external_data import fetch_usd_brl_bacen
 
 def enrich_with_external_features(df: pd.DataFrame, use_usd_brl: bool = True) -> pd.DataFrame:
     """
-    Enriquece o DataFrame com dados macroeconómicos externos.
+    Enriquece o DataFrame com dados macroeconômicos externos.
 
-    Atualmente, a função adiciona a cotação da taxa de câmbio USD/BRL,
-    obtida através da API do Banco Central do Brasil (BACEN).
+    Atualmente, a função adiciona a cotação da taxa de câmbio USD/BRL, obtida
+    através da API do Banco Central do Brasil (BACEN). Os dados são unidos
+    ao DataFrame original com base na coluna 'date'.
 
     Args:
-        df (pd.DataFrame): O DataFrame principal a ser enriquecido.
-        use_usd_brl (bool): Um booleano que controla se a cotação USD/BRL
-                            deve ser adicionada. O padrão é True.
+        df (pd.DataFrame): O DataFrame principal a ser enriquecido. Deve conter
+                           uma coluna 'date' para a fusão dos dados.
+        use_usd_brl (bool, optional): Controla se a cotação USD/BRL deve ser
+                                      adicionada. Padrão é True.
 
     Returns:
-        pd.DataFrame: O DataFrame com os dados externos fundidos.
+        pd.DataFrame: O DataFrame original com os dados externos adicionados.
+                      Se a busca dos dados externos falhar, retorna o
+                      DataFrame original com um aviso.
     """
     if use_usd_brl:
         start = df["date"].min().strftime("%Y-%m-%d")
@@ -38,18 +68,19 @@ def enrich_with_external_features(df: pd.DataFrame, use_usd_brl: bool = True) ->
 
 def create_moving_average_features(df: pd.DataFrame, windows: List[int]) -> pd.DataFrame:
     """
-    Cria features baseadas em médias móveis para uma lista de janelas.
+    Cria features baseadas em médias móveis para uma lista de janelas de tempo.
 
-    Para cada janela especificada, calcula a Média Móvel Simples (SMA) e o
-    Desvio Padrão (STD) do preço de fecho ('close').
+    Para cada janela especificada na lista, esta função calcula a Média Móvel
+    Simples (SMA) e o Desvio Padrão (STD) do preço de fechamento ('close').
 
     Args:
         df (pd.DataFrame): O DataFrame de entrada, que deve conter a coluna 'close'.
-        windows (List[int]): Uma lista de inteiros que representam os
-                             tamanhos das janelas para os cálculos.
+        windows (List[int]): Uma lista de inteiros representando os tamanhos
+                             das janelas para os cálculos (ex: [7, 14, 30]).
 
     Returns:
-        pd.DataFrame: Um novo DataFrame com as colunas de SMA e STD adicionadas.
+        pd.DataFrame: Uma cópia do DataFrame com as novas colunas de SMA e STD
+                      adicionadas para cada janela.
     """
     df_featured = df.copy()
     for window in windows:
@@ -64,20 +95,22 @@ def create_moving_average_features(df: pd.DataFrame, windows: List[int]) -> pd.D
     return df_featured
 
 def create_technical_features(df: pd.DataFrame) -> pd.DataFrame:
-    """
+    """"
     Adiciona um conjunto abrangente de features de análise técnica ao DataFrame.
 
-    Esta função serve como um pipeline principal para a engenharia de features,
-    incluindo médias móveis, retornos, volatilidade, lags e indicadores
-    complexos da biblioteca 'ta'. No final, otimiza o uso de memória e
-    remove todas as linhas que contenham valores NaN.
+    Esta função atua como um pipeline principal para a engenharia de features,
+    adicionando médias móveis, retornos, volatilidade, lags de preço e
+    indicadores técnicos complexos da biblioteca 'ta'. Ao final, remove todas
+    as linhas que contenham valores NaN resultantes dos cálculos com janelas.
 
     Args:
         df (pd.DataFrame): O DataFrame de entrada. Requer as colunas 'open',
-                           'high', 'low', 'close', e uma coluna de volume.
+                           'high', 'low', 'close', e uma coluna de volume
+                           (ex: 'volume' ou 'volume_usdt').
 
     Returns:
-        pd.DataFrame: O DataFrame enriquecido, otimizado e limpo.
+        pd.DataFrame: O DataFrame enriquecido com dezenas de novas features
+                      técnicas, e sem linhas com valores ausentes.
     """
     df_featured = df.copy()
 

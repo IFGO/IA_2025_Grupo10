@@ -1,3 +1,28 @@
+# -*- coding: utf-8 -*-
+"""
+Ponto de Entrada Principal e Orquestrador do Pipeline.
+
+Este script serve como o ponto de entrada principal para todo o projeto de
+análise e modelagem de preços de criptoativos. Ele utiliza argumentos de
+linha de comando para orquestrar e executar as diferentes etapas do
+pipeline de forma modular.
+
+O pipeline completo inclui as seguintes etapas, que podem ser executadas
+individualmente com o argumento `--action` ou todas de uma vez (`--action all`):
+1.  **Download (`download`):** Baixa e salva os dados históricos das criptomoedas.
+2.  **Análise (`analyze`):** Gera estatísticas descritivas e gráficos de análise.
+3.  **Engenharia de Features (`features`):** Cria novas features e indicadores técnicos.
+4.  **Treinamento de Modelos (`train`):** Treina, avalia e compara modelos de ML.
+5.  **Simulação de Lucro (`profit`):** Realiza backtesting de uma estratégia de
+    investimento com base nas previsões dos modelos.
+6.  **Testes Estatísticos (`stats`):** Executa testes de hipótese e ANOVA sobre os dados.
+
+Exemplo de uso para treinar um modelo específico:
+    $ python main.py --action train --crypto BTC --model RandomForest
+
+Exemplo para executar todo o fluxo para uma única criptomoeda:
+    $ python main.py --action all --crypto ETH
+"""
 import pandas as pd
 import os
 import logging
@@ -36,6 +61,14 @@ from config import (
 )
 
 def setup_logging(level_str: str = 'ERROR'):
+    """
+    Configura o sistema de logging global para a aplicação.
+
+    Args:
+        level_str (str, optional): O nível de logging desejado, em formato de string
+                                   (ex: 'INFO', 'DEBUG', 'WARNING', 'ERROR').
+                                   O padrão é 'ERROR'.
+    """
     level = getattr(logging, level_str.upper(), logging.ERROR)
     logging.basicConfig(
         level=level,

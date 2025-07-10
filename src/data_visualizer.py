@@ -1,3 +1,20 @@
+# -*- coding: utf-8 -*-
+"""
+Visualização de Dados de Criptoativos.
+
+Este módulo é dedicado à criação de gráficos e visualizações a partir de
+dados históricos de preços de criptomoedas. Ele utiliza a biblioteca Matplotlib
+para gerar plots informativos que ajudam na análise técnica e na compreensão
+das tendências de mercado.
+
+A principal funcionalidade é a geração de um gráfico de linha do tempo que exibe:
+- O histórico do preço de fechamento do ativo.
+- Médias móveis de curto e longo prazo para identificar tendências.
+- Sinais de compra e venda baseados no cruzamento dessas médias móveis.
+
+Os gráficos gerados são salvos como arquivos de imagem em um diretório
+especificado, facilitando a sua análise e compartilhamento.
+"""
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -6,15 +23,28 @@ import logging
 
 def plot_crypto_data(df: pd.DataFrame, pair_name: str, save_folder: str):
     """
-    Gera e salva um gráfico de linha do preço de fecho de uma criptomoeda.
+    Gera e salva um gráfico de preço com médias móveis e sinais de negociação.
+
+    Esta função cria um gráfico de linha detalhado para um par de criptomoedas,
+    incluindo:
+    1.  O preço de fechamento ('close') ao longo do tempo.
+    2.  Uma média móvel de curto prazo (20 períodos).
+    3.  Uma média móvel de longo prazo (50 períodos).
+    4.  Marcadores de sinal de 'Compra' (triângulo verde) e 'Venda' (triângulo
+        vermelho), gerados quando a média móvel curta cruza a longa.
+
+    O gráfico é salvo como um arquivo .png em um diretório especificado. A função
+    realiza a limpeza de dados, como a conversão de tipos e remoção de valores
+    nulos, para garantir a plotagem correta.
 
     Args:
         df (pd.DataFrame): O DataFrame que contém os dados da criptomoeda.
-                           Deve incluir as colunas 'date' e 'close'.
+                           Deve incluir as colunas 'date' e 'close'. A coluna
+                           'signal' é opcional e será calculada se não existir.
         pair_name (str): O nome do par de moedas para ser usado no título do
                          gráfico (ex: "BTC_USDT").
         save_folder (str): O caminho da pasta onde a imagem do gráfico
-                           será guardada.
+                           será guardada. O diretório será criado se não existir.
     """
     try:
         logging.info(f"Gerando gráfico simples para {pair_name}...")

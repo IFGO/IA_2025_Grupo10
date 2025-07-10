@@ -1,3 +1,28 @@
+# -*- coding: utf-8 -*-
+"""
+Módulo de Análise Estatística para Dados Financeiros.
+
+Este módulo fornece um conjunto de ferramentas para realizar testes estatísticos
+formais em dados de séries temporais financeiras, com foco em retornos de
+criptoativos. Ele foi projetado para validar hipóteses sobre o comportamento
+dos ativos e comparar o desempenho entre diferentes grupos.
+
+Funcionalidades Principais:
+-   **Teste de Hipótese (Teste t de 1 Amostra):** Permite testar se o retorno
+    médio de um ativo é estatisticamente superior a um valor de referência.
+-   **Análise de Variância (ANOVA):** Compara os retornos médios entre múltiplos
+    ativos para determinar se existem diferenças significativas entre eles.
+    A análise é realizada de duas formas:
+    1.  Comparando diretamente os retornos de cada criptomoeda.
+    2.  Agrupando as criptomoedas por nível de volatilidade (baixa, média, alta)
+        e comparando os retornos médios desses grupos.
+-   **Teste Post-Hoc de Tukey HSD:** Quando a ANOVA indica uma diferença
+    significativa, este teste é executado automaticamente para identificar
+    quais pares de grupos específicos diferem entre si.
+-   **Geração de Relatórios:** Todas as análises geram relatórios detalhados em
+    arquivos de texto e gráficos visuais (para o teste de Tukey), que são
+    salvos em disco para fácil consulta e documentação.
+"""
 import pandas as pd
 import numpy as np
 import logging
@@ -21,16 +46,16 @@ def _calculate_daily_returns(df: pd.DataFrame) -> pd.Series:
     """
     Calcula os retornos diários a partir da coluna 'close' de um DataFrame.
 
-    Esta função é "privada" (indicada pelo underscore inicial) e serve para
-    isolar e padronizar o cálculo dos retornos, evitando efeitos secundários
-    nos DataFrames originais.
+    Esta função auxiliar interna isola e padroniza o cálculo dos retornos,
+    evitando a modificação dos DataFrames originais (efeitos secundários).
 
     Args:
         df (pd.DataFrame): DataFrame que deve conter a coluna 'close'.
 
     Returns:
-        pd.Series: Uma série com os retornos diários, já sem valores NaN.
-                   Retorna uma série vazia se os dados forem inválidos.
+        pd.Series: Uma série com os retornos diários, já sem o primeiro valor
+                   que é sempre NaN. Retorna uma série vazia se os dados de
+                   entrada forem inválidos.
     """
     if 'close' not in df.columns or df['close'].isnull().all():
         return pd.Series(dtype=np.float64)
@@ -119,14 +144,24 @@ def perform_anova_analysis(
     alpha: float = 0.05
 ):
     """
-    Realiza Análise de Variância (ANOVA) para comparar os retornos médios diários
-    entre diferentes criptomoedas e entre grupos de volatilidade.
+    Realiza Análise de Variância (ANOVA) para comparar os retornos médios.
+
+    Esta função executa duas análises ANOVA distintas:
+    1.  Compara os retornos médios diários entre todas as criptomoedas fornecidas.
+    2.  Agrupa as criptomoedas por volatilidade (baixa, média, alta) e compara
+        os retornos médios entre esses grupos.
+
+    Para cada análise, se a ANOVA for significativa, um teste post-hoc de Tukey
+    é realizado para identificar quais pares de grupos diferem.
 
     Args:
-        all_data (Dict[str, pd.DataFrame]): Dicionário onde as chaves são nomes
-                                            de criptomoedas e os valores são seus DataFrames.
+        all_data (Dict[str, pd.DataFrame]): Dicionário com nomes de criptomoedas
+                                            como chaves e seus DataFrames como valores.
         save_folder (str): Pasta para salvar os relatórios e gráficos.
-        alpha (float): Nível de significância (padrão 0.05).
+        alpha (float, optional): Nível de significância. Padrão 0.05.
+
+    Side Effects:
+        - Salva relatórios (.txt) e gráficos (.png) no `save_folder`.
     """
     logging.info("Iniciando análise ANOVA...")
     os.makedirs(save_folder, exist_ok=True)
