@@ -1,3 +1,25 @@
+# -*- coding: utf-8 -*-
+"""
+Carregamento e Processamento de Dados de Criptomoedas.
+
+Este módulo é responsável por obter, limpar e enriquecer dados históricos de
+preços de criptoativos. Ele foi projetado para buscar os dados de uma fonte
+externa (CryptoDataDownload) caso não estejam disponíveis localmente,
+armazenando-os em cache para acessos futuros.
+
+Funcionalidades principais:
+-   **Download sob demanda:** Baixa arquivos CSV de dados históricos se não
+    existirem em um diretório local (`data/raw`).
+-   **Pré-processamento e Limpeza:** Padroniza os nomes das colunas, converte
+    tipos de dados (especialmente datas) e remove informações irrelevantes.
+-   **Cálculo de Indicadores Financeiros:** Adiciona colunas ao DataFrame com
+    métricas importantes para análise técnica, como médias móveis,
+    volatilidade, retornos diários e cumulativos, e sinais de trading baseados
+    em cruzamento de médias.
+
+As funções utilizam a biblioteca Pandas para manipulação de dados de forma
+eficiente e vetorizada.
+"""
 import pandas as pd
 import numpy as np
 import requests
