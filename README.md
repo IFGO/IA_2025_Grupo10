@@ -163,17 +163,11 @@ Para garantir a qualidade e a robustez do código, o projeto inclui testes unit�
 
 1.  Certifique-se de que seu ambiente virtual está ativado.
 2.  Navegue até a pasta raiz do projeto (`projeto_cripto_ia`).
-3.  Execute o `pytest` com o `pytest-cov` para gerar um relatório de cobertura:
+3.  Execute o `pytest` para gerar um relatório de cobertura (ação padrão --cov=src --cov=tests --cov-report=term-missing --cov-report=html):
     ```bash
-    pytest --cov=src tests/
+    pytest 
     ```
-    Este comando executará todos os testes na pasta `tests/` e mostrará a porcentagem de cobertura do código na pasta `src/`.
-
-    Para um relatório de cobertura HTML detalhado (visualizável no navegador):
-    ```bash
-    pytest --cov=src --cov-report=html tests/
-    ```
-    Isso criará uma pasta `htmlcov/` na raiz do projeto. Abra `htmlcov/index.html` em seu navegador.
+    Este comando executará todos os testes na pasta `tests/` e mostrará a porcentagem de cobertura no terminal e também no arquivo `htmlcov/` na raiz do projeto. Abra `htmlcov/index.html` em seu navegador.
 
 ## Boas Práticas de Código
 
