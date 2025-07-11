@@ -6,6 +6,7 @@ Projeto de previsão de preços de criptomoedas com base em aprendizado de máqu
 .
 ├── data/
 │   ├── raw/                        # Dados brutos baixados das exchanges
+│   ├── output/                     # Dados pre-processados dos arquivos baixados: remove nans, converte tipos, ordena por data, refaz os índices, etc.
 │   └── processed/                  # Dados após a engenharia de features
 ├── figures/                        # Onde todos os gráficos e relatórios visuais são salvos
 │   ├── simple_plots/               # Gráficos de séries temporais simples
