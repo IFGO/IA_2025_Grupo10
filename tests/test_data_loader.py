@@ -9,24 +9,36 @@ logging.basicConfig(level=logging.CRITICAL)
 # Removido mock_csv_data fixture, pois o mock_read_csv agora retorna o DataFrame diretamente
 
 
-def test_load_crypto_data_success(monkeypatch):  # type: ignore
+def test_load_crypto_data_success(tmp_path,monkeypatch):  # type: ignore
     """
     Testa o carregamento bem-sucedido de dados de criptomoeda.
     """
+    # mockup alterado para cobrir nao só o read_csv mas também o open()
+    data_dir = tmp_path / "raw"
+    data_dir.mkdir()
 
-    def mock_read_csv(filepath, skiprows=1, encoding=None):  # type: ignore
-        if Path(filepath).name == "BTC_USDT_d.csv":  # type: ignore
-            data = {  # type: ignore
-                "date": pd.to_datetime(["2023-01-01", "2023-01-02", "2023-01-03"]),  # type: ignore
-                "close": [100.0, 101.5, 102.0],
-                "open": [99.0, 100.0, 101.5],
-            }
-            return pd.DataFrame(data)
-        raise Exception(f"Arquivo mock inesperado: {filepath}")
+    filepath = data_dir / "BTC_USDT_d.csv"
+    content = (
+        "date,open,close\n"
+        "2023-01-01,99.0,100.0\n"
+        "2023-01-02,100.0,101.5\n"
+        "2023-01-03,101.5,102.0\n"
+    )
+    filepath.write_text(content, encoding="utf-8-sig")
 
-    # Patching correto
-    monkeypatch.setattr("src.data_loader.pd.read_csv", mock_read_csv)  # type: ignore
-    monkeypatch.setattr("pathlib.Path.exists", lambda self: True)  # type: ignore
+    # Monkeypatch Path to return our tmp_path / 'raw' folder whenever Path('data/raw') is called
+    original_path_class = Path
+
+    def mock_path(arg=None):
+        # Se o código pedir 'data/raw', redirecione para tmp_path / 'raw'
+        if arg == "data/raw":
+            return data_dir
+        # Se pedir o arquivo completo, redirecione para o nosso tmp_path
+        if arg == "data/raw/BTC_USDT_d.csv":
+            return filepath
+        return original_path_class(arg)
+
+    monkeypatch.setattr("src.data_loader.Path", mock_path)
 
     df = load_crypto_data(base_symbol="BTC", quote_symbol="USDT", timeframe="d")
 
@@ -34,10 +46,10 @@ def test_load_crypto_data_success(monkeypatch):  # type: ignore
     assert not df.empty
     assert "date" in df.columns
     assert "close" in df.columns
-    assert pd.api.types.is_datetime64_any_dtype(df["date"])  # type: ignore
-    assert pd.api.types.is_numeric_dtype(df["close"])  # type: ignore
+    assert pd.api.types.is_datetime64_any_dtype(df["date"])
+    assert pd.api.types.is_numeric_dtype(df["close"])
     assert len(df) == 3
-    assert df["close"].iloc[0] == 100.0  # type: ignore
+    assert df["close"].iloc[0] == 100.0
 
 
 def test_load_crypto_data_empty_data(monkeypatch):  # type: ignore
