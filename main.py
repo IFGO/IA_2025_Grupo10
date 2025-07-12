@@ -27,6 +27,7 @@ import pandas as pd
 import os
 import logging
 import argparse
+import json
 import joblib  # type: ignore
 from typing import Dict
 from src.data_loader import load_crypto_data
@@ -37,7 +38,13 @@ from src.model_training import train_and_evaluate_model, compare_models, limpar_
 from src.prediction_profit import simulate_investment_and_profit  # type: ignore
 from src.statistical_tests import perform_hypothesis_test, perform_anova_analysis
 from src.feature_engineering import enrich_with_external_features
-from src.utils import get_pair_key, get_raw_data_filepath, get_processed_data_filepath
+from src.preprocessing import preprocess_features  # type: ignore
+from src.utils import (
+    get_pair_key,
+    get_raw_data_filepath,
+    get_processed_data_filepath,
+    limpar_pastas_saida,
+)
 from src.model_training import get_best_model_by_mse  # type: ignore
 
 from config import (
@@ -55,7 +62,7 @@ from config import (
     DEFAULT_TARGET_RETURN_PERCENT,
     DEFAULT_POLY_DEGREE,
     LOG_LEVEL,
-    FEATURES_SELECIONADAS,
+    FEATURES_CANDIDATAS,
     INITIAL_INVESTMENT,
     USE_USD_BRL,
     N_ESTIMATORS_RF,
@@ -92,6 +99,9 @@ def main():
     O comportamento é controlado pelos argumentos de linha de comando, permitindo executar etapas específicas ou todo o fluxo.
     """
     setup_logging(LOG_LEVEL)
+
+    # Limpa pastas de saída intermediárias e modelos antigos
+    limpar_pastas_saida()
 
     parser = argparse.ArgumentParser(
         description="Análise e Previsão de Preços de Criptomoedas."
@@ -268,23 +278,37 @@ def main():
             for pair_key, df_featured in all_processed_dfs.items():
                 logging.info(f"Processando modelos para {pair_key}...")
                 features = [
-                    col for col in FEATURES_SELECIONADAS if col in df_featured.columns
+                    col for col in FEATURES_CANDIDATAS if col in df_featured.columns
                 ]
-                X = df_featured[features]
+                # Adiciona usd_brl se for solicitado e existir no dataframe
+                if (
+                    args.use_usd_brl
+                    and "usd_brl" in df_featured.columns
+                    and "usd_brl" not in features
+                ):
+                    features.append("usd_brl")
+                    logging.info(
+                        "[main] Feature 'usd_brl' adicionada dinamicamente às FEATURES_CANDIDATAS."
+                    )
+
                 y = df_featured["close"]  # type: ignore
-                mask = ~(X.isna().any(axis=1) | y.isna())
-                X_clean, y_clean = X[mask], y[mask]  # type: ignore
+                mask = ~y.isna()
+                df_filtered = df_featured[mask].copy()
+
+                # Aplica o pipeline de seleção com VIF + SelectKBest, forçando inclusão de usd_brl se necessário
+                X_clean = preprocess_features(
+                    df_filtered.drop(columns=["close"]),
+                    y[mask],
+                    k_best=10,
+                    force_include=["usd_brl"] if args.use_usd_brl else None,
+                )
+                y_clean = y[mask]
 
                 if X_clean.empty:
                     logging.warning(
-                        f"Sem dados suficientes para treinar modelos para {pair_key} após limpeza."
+                        f"Sem dados suficientes para treinar modelos para {pair_key} após pré-processamento."
                     )
                     continue
-
-                # Limpa modelos antigos antes de iniciar o treino, garantindo que apenas
-                # o modelo mais recente (especificado ou selecionado automaticamente)
-                # será considerado na fase de simulação de lucro.
-                limpar_modelos_antigos(pair_key, MODELS_FOLDER)
 
                 # Inicia o treinamento de modelos
                 if args.model:
@@ -327,6 +351,13 @@ def main():
                         logging.info(
                             f"Melhor modelo ({best_name}) salvo em: {model_path}"
                         )
+                        # Salva as features utilizadas para o modelo
+                        features_path = os.path.join(
+                            MODELS_FOLDER, f"features_{pair_key}.json"
+                        )
+                        with open(features_path, "w") as f:
+                            json.dump(X_clean.columns.tolist(), f)
+
                         compare_models(
                             X_clean,
                             y_clean,
@@ -350,8 +381,19 @@ def main():
             for pair_key, df_featured in all_processed_dfs.items():
                 logging.info(f"Simulando lucro para {pair_key}...")
                 features = [
-                    col for col in FEATURES_SELECIONADAS if col in df_featured.columns
+                    col for col in FEATURES_CANDIDATAS if col in df_featured.columns
                 ]
+                # Adiciona usd_brl se for solicitado e existir no dataframe
+                if (
+                    args.use_usd_brl
+                    and "usd_brl" in df_featured.columns
+                    and "usd_brl" not in features
+                ):
+                    features.append("usd_brl")
+                    logging.info(
+                        "[main] Feature 'usd_brl' adicionada dinamicamente às FEATURES_CANDIDATAS."
+                    )
+
                 X = df_featured[features]  # type: ignore
                 y = df_featured["close"]  # type: ignore
                 dates = pd.to_datetime(df_featured["date"])  # type: ignore

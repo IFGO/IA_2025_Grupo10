@@ -8,6 +8,8 @@ geração de nomes de arquivos e caminhos, para evitar duplicação de código e
 melhorar a manutenibilidade.
 """
 import os
+import logging
+
 from config import (
     MOEDA_COTACAO,
     TIMEFRAME,
@@ -74,3 +76,51 @@ def get_model_filepath(model_type: str, base_symbol: str) -> str:
         quote=MOEDA_COTACAO.upper(),
     )
     return os.path.join(MODELS_FOLDER, filename)
+
+
+def limpar_pastas_saida() -> None:
+    """
+    Remove todos os arquivos das pastas de saída intermediárias e de modelos.
+
+    As pastas afetadas incluem:
+        OUTPUT_FOLDER,
+        PROCESSED_DATA_FOLDER,
+        MODELS_FOLDER,
+        PLOTS_FOLDER,
+        ANALYSIS_FOLDER,
+        PROFIT_PLOTS_FOLDER,
+        STATS_REPORTS_FOLDER
+    presentes no arquivo config.py.
+
+    A estrutura das pastas é mantida. A pasta 'data/raw' não é afetada.
+    """
+    from config import (
+        OUTPUT_FOLDER,
+        PROCESSED_DATA_FOLDER,
+        MODELS_FOLDER,
+        PLOTS_FOLDER,
+        ANALYSIS_FOLDER,
+        PROFIT_PLOTS_FOLDER,
+        STATS_REPORTS_FOLDER,
+    )
+
+    pastas_para_limpar = [
+        OUTPUT_FOLDER,
+        PROCESSED_DATA_FOLDER,
+        MODELS_FOLDER,
+        PLOTS_FOLDER,
+        ANALYSIS_FOLDER,
+        PROFIT_PLOTS_FOLDER,
+        STATS_REPORTS_FOLDER,
+    ]
+
+    logging.info(f"Limpando arquivos das pastas: {', '.join(pastas_para_limpar)}")
+
+    for pasta in pastas_para_limpar:
+        for root, dirs, files in os.walk(pasta):  # type: ignore
+            for file in files:
+                caminho = os.path.join(root, file)
+                try:
+                    os.remove(caminho)
+                except Exception as e:
+                    logging.warning(f"Falha ao remover {caminho}: {e}")

@@ -27,6 +27,7 @@ import os
 import joblib  # type: ignore
 import matplotlib.pyplot as plt
 import seaborn as sns
+import json
 
 
 def simulate_investment_and_profit(
@@ -97,7 +98,27 @@ def simulate_investment_and_profit(
     for model_key, model in loaded_models.items():  # type: ignore
         logging.info(f"Executando simulação vetorizada para o modelo: {model_key}")
 
-        all_predictions = model.predict(data_df[X.columns])  # type: ignore
+        # Carrega as features utilizadas no treino
+        features_path = os.path.join(models_folder, f"features_{pair_name}.json")
+        if not os.path.exists(features_path):
+            logging.warning(
+                f"Arquivo de features não encontrado para {pair_name}. Ignorando."
+            )
+            return
+
+        with open(features_path, "r") as f:
+            trained_features = json.load(f)
+
+        # Garante que todas as features estejam presentes
+        missing = [f for f in trained_features if f not in data_df.columns]
+        if missing:
+            logging.warning(
+                f"Features ausentes no dataset atual para {pair_name}: {missing}"
+            )
+            return
+
+        X = data_df[trained_features]
+        all_predictions = model.predict(X)
 
         last_known_price = data_df["close"].shift(1).fillna(0)  # type: ignore
         signals = np.where(all_predictions > last_known_price, 1, 0)  # type: ignore

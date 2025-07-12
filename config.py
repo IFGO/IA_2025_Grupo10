@@ -28,7 +28,7 @@ As configurações estão agrupadas nas seguintes categorias:
 
 - **Parâmetros de Engenharia de Features:**
   - `MOVING_AVERAGE_WINDOWS`: Janelas para cálculo de médias móveis.
-  - `FEATURES_SELECIONADAS`: Lista de features a serem usadas no treinamento do modelo.
+  - `FEATURES_CANDIDATAS`: Lista de features a serem usadas no treinamento do modelo inicialmente. Ao final, o software escolhe as melhores.
   - `USE_USD_BRL`: Flag para controlar a adição de dados externos (cotação USD/BRL).
 
 - **Parâmetros de Simulação e Log:**
@@ -37,10 +37,16 @@ As configurações estão agrupadas nas seguintes categorias:
 """
 
 CRIPTOS_PARA_BAIXAR = [
-    "BTC",
+    #    "BTC",
     "ETH",
-    "LTC",  # , "XRP", "BCH",
-    # "XMR", "DASH", "ETC", "ZRX", "EOS"
+    #    "LTC",
+    #    "XRP",
+    #    "BCH",
+    #    "XMR",
+    "DASH",
+    #    "ETC",
+    #    "ZRX",
+    #    "EOS",
 ]
 
 MOEDA_COTACAO = "USDT"
@@ -64,7 +70,7 @@ DEFAULT_POLY_DEGREE = 2
 N_ESTIMATORS_RF = 150
 
 MOVING_AVERAGE_WINDOWS = [7, 14, 30]
-FEATURES_SELECIONADAS = [
+FEATURES_CANDIDATAS = [
     "high",
     "low",
     "sma_7",

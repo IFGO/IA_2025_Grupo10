@@ -83,7 +83,7 @@ def train_and_evaluate_model(
     model_mapping = {  # type: ignore
         "MLP": MLPRegressor(
             hidden_layer_sizes=(100, 50),
-            max_iter=500,
+            max_iter=1000,
             random_state=42,
             early_stopping=True,
             n_iter_no_change=50,
@@ -129,7 +129,7 @@ def train_and_evaluate_model(
                     models_folder,
                     f"{model_type.lower()}_{pair_name.replace(' ', '_')}.pkl",
                 )
-                joblib.dump(model, model_filename)  # type: ignore
+                joblib.dump({"model": model, "features": X_reset.columns.tolist()}, model_filename)  # type: ignore
                 logging.info(
                     f"Modelo {model_type} para {pair_name} salvo em: {model_filename}"
                 )
@@ -186,7 +186,7 @@ def train_and_evaluate_model(
             model_filename = os.path.join(
                 models_folder, f"{model_type.lower()}_{pair_name.replace(' ', '_')}.pkl"
             )
-            joblib.dump(model, model_filename)  # type: ignore
+            joblib.dump({"model": model, "features": X_reset.columns.tolist()}, model_filename)  # type: ignore
             logging.info(f"Modelo final {model_type} salvo em: {model_filename}")
         except Exception as e:
             logging.error(f"Erro ao salvar modelo final {model_type}: {e}")
@@ -231,7 +231,7 @@ def compare_models(
     models = {  # type: ignore
         "MLP": MLPRegressor(
             hidden_layer_sizes=(100, 50),
-            max_iter=500,
+            max_iter=1000,
             random_state=42,
             early_stopping=True,
             n_iter_no_change=50,
@@ -476,7 +476,7 @@ def get_best_model_by_mse(  # type: ignore
     model_defs = {  # type: ignore
         "MLP": MLPRegressor(
             hidden_layer_sizes=(100, 50),
-            max_iter=500,
+            max_iter=1000,
             random_state=42,
             early_stopping=True,
             n_iter_no_change=50,
