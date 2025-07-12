@@ -5,15 +5,15 @@ Projeto de previsão de preços de criptomoedas com base em aprendizado de máqu
 ```
 .
 ├── data/
-│   ├── raw/                        # Dados brutos baixados das exchanges
-│   ├── output/                     # Dados pre-processados dos arquivos baixados: remove nans, converte tipos, ordena por data, refaz os índices, etc.
+│   ├── models/                     # Modelos de Machine Learning treinados (salvos como arquivos .pkl)
+│   └── output/                     # Dados normalizados
 │   └── processed/                  # Dados após a engenharia de features
-├── figures/                        # Onde todos os gráficos e relatórios visuais são salvos
-│   ├── simple_plots/               # Gráficos de séries temporais simples
-│   ├── analysis_plots/             # Gráficos de análise estatística (histogramas, boxplots, diagramas de dispersão)
-│   ├── profit_plots/               # Gráficos de evolução do lucro das simulações
-│   └── statistical_reports/        # Relatórios de testes estatísticos (hipótese, ANOVA)
-├── models/                         # Modelos de Machine Learning treinados (salvos como arquivos .pkl)
+│   └── raw/                        # Dados brutos baixados das exchanges
+│   └── stats_reports/              # Relatorios de estatisticas
+├── grafico/                        # Onde todos os gráficos e relatórios visuais são salvos
+│   ├── analysis/                   # Gráficos de análise estatística (histogramas, boxplots, diagramas de dispersão)
+│   ├── plot/                       # Gráficos de séries temporais simples
+│   ├── profit_plots/               # Gráficos de lucro
 ├── src/                            # Módulos Python principais com a lógica do negócio
 │   ├── init.py                     # Torna 'src' um pacote Python
 │   ├── data_loader.py              # Responsável por carregar dados históricos de criptomoedas
@@ -27,17 +27,19 @@ Projeto de previsão de preços de criptomoedas com base em aprendizado de máqu
 │   └── utils.py                    # Módulo de Funções Utilitárias.
 ├── tests/                          # Casos de teste automatizados para validação do código
 │   ├── init.py                     # Torna 'tests' um pacote Python
-│   ├── test_data_loader.py         #Teste do data loader (carregador dos dados históricos)
-│   ├── test_data_analyzer.py       #Teste do data_analyzer (analisador estatístico)
-│   ├── test_data_visualizer.py     #Teste do data_visualizer (gerador de gráficos pra séries temporais)
-│   ├── test_feature_engineering.py #Teste do feature_engineering (criador e transformador de features para os modelos)
-│   └── test_model_training.py      #Teste do model_training (treinador, avaliador e comparativo de modelos de regressão)
+│   ├── test_data_loader.py         # Teste do data loader (carregador dos dados históricos)
+│   ├── test_data_analyzer.py       # Teste do data_analyzer (analisador estatístico)
+│   ├── test_data_visualizer.py     # Teste do data_visualizer (gerador de gráficos pra séries temporais)
+│   ├── test_external_data.py       # Teste do fetch_usd_brl_bacen (consulta Bacen)
+│   ├── test_feature_engineering.py # Teste do feature_engineering (criador e transformador de features para os modelos)
+│   └── test_model_training.py      # Teste do model_training (treinador, avaliador e comparativo de modelos de regressão)
 ├── choose_var_training/            # Scripts auxiliares para análise e seleção de variáveis de treino
 │   ├── escolher_variaveis_treino.py# Gera heatmaps de correlação entre variáveis dos arquivos processados
 │   └── otimizando_variaveis.py     # Ajusta e avalia modelos de regressão linear múltipla para seleção de variáveis
 ├── main.py                         # Script principal configurável via linha de comando (CLI)
 ├── config.py                       # (Opcional) Arquivo para configurações globais do projeto
 ├── README.md                       # Este arquivo de documentação
+├── pytest.ini                      # Configurações do pytest com cobertura
 └── requirements.txt                # Lista de dependências do projeto
 ```
 **Clone o repositório (se aplicável) ou crie a estrutura de pastas:**
