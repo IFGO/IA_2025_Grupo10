@@ -19,11 +19,12 @@ Projeto de previsão de preços de criptomoedas com base em aprendizado de máqu
 │   ├── data_loader.py              # Responsável por carregar dados históricos de criptomoedas
 │   ├── data_analyzer.py            # Realiza análises estatísticas descritivas e gera gráficos de análise
 │   ├── data_visualizer.py          # Gera gráficos de linha simples para séries temporais
+│   ├── external_data.py            # Coleta de Dados Financeiros de Fontes Externas
 │   ├── feature_engineering.py      # Cria e transforma features para os modelos
 │   ├── model_training.py           # Lida com o treinamento, avaliação e comparação de modelos de regressão
 │   ├── prediction_profit.py        # Simula investimentos e calcula o lucro potencial
+│   ├── preprocessing.py            # Trata overfitting dos modelos neurais e de regressão
 │   ├── statistical_tests.py        # Implementa testes de hipótese e Análise de Variância (ANOVA)
-│   ├── external_data.py            # Coleta de Dados Financeiros de Fontes Externas
 │   └── utils.py                    # Módulo de Funções Utilitárias.
 ├── tests/                          # Casos de teste automatizados para validação do código
 │   ├── init.py                     # Torna 'tests' um pacote Python
@@ -33,6 +34,10 @@ Projeto de previsão de preços de criptomoedas com base em aprendizado de máqu
 │   ├── test_external_data.py       # Teste do fetch_usd_brl_bacen (consulta Bacen)
 │   ├── test_feature_engineering.py # Teste do feature_engineering (criador e transformador de features para os modelos)
 │   └── test_model_training.py      # Teste do model_training (treinador, avaliador e comparativo de modelos de regressão)
+│   └── test_prediction_profit.py   # Teste do prediction_profit (modelo de predição)
+│   └── test_preprocessing.py       # Teste do preprocessing (overfitting de regressão e redes neurais)
+│   └── test_statistical_tests.py   # Teste do statistical_tests (testes estatisticos)
+│   └── test_utils.py               # Teste do utils (módulos auxiliares)
 ├── choose_var_training/            # Scripts auxiliares para análise e seleção de variáveis de treino
 │   ├── escolher_variaveis_treino.py# Gera heatmaps de correlação entre variáveis dos arquivos processados
 │   └── otimizando_variaveis.py     # Ajusta e avalia modelos de regressão linear múltipla para seleção de variáveis
