@@ -27,10 +27,12 @@ import logging
 import os
 import joblib  # type: ignore
 import matplotlib
+import json
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import seaborn as sns
+from typing import Optional
 from sklearn.model_selection import train_test_split, KFold  # type: ignore
 from sklearn.neural_network import MLPRegressor
 from sklearn.linear_model import LinearRegression
@@ -542,3 +544,184 @@ def limpar_modelos_antigos(pair_name: str, models_folder: str):
         if os.path.exists(caminho):
             os.remove(caminho)
             logging.info(f"Modelo antigo removido: {caminho}")
+
+
+# substitui todas as funções acima por uma função que treina e compara modelos
+def train_and_compare_models(
+    X: pd.DataFrame,
+    y: pd.Series,  # type: ignore
+    kfolds: int,
+    pair_name: str,
+    plots_folder: str,
+    poly_degree: int = 2,
+    n_estimators: int = 150,
+    test_size: float = 0.3,
+    models_folder: Optional[str] = None,
+    model_type: Optional[str] = None,  # Novo parâmetro opcional
+):
+    """
+    Treina e compara múltiplos modelos de regressão, retornando o melhor com base no MSE.
+
+    Realiza validação cruzada, avaliação em hold-out, comparação de métricas e logging.
+    Também pode salvar o modelo final e gerar gráficos de análise, se `models_folder` for fornecido.
+
+    Args:
+        X (pd.DataFrame): Features de entrada.
+        y (pd.Series): Variável alvo.
+        kfolds (int): Número de folds para validação cruzada.
+        pair_name (str): Nome do par de moedas.
+        plots_folder (str): Pasta para salvar gráficos.
+        poly_degree (int, optional): Grau do polinômio (caso aplicável).
+        n_estimators (int, optional): Nº de árvores do Random Forest.
+        test_size (float, optional): Tamanho do hold-out.
+        models_folder (str, optional): Pasta onde salvar o modelo final (opcional).
+        model_type (str, optional): Nome do modelo específico a ser treinado (se desejado).
+
+    Returns:
+        Tuple[RegressorMixin, str]: Modelo de melhor desempenho e seu nome.
+    """
+    from sklearn.pipeline import Pipeline
+
+    # Define todos os modelos disponíveis
+    model_defs_raw = {
+        "MLP": MLPRegressor(
+            hidden_layer_sizes=(100, 50),
+            max_iter=1000,
+            random_state=42,
+            early_stopping=True,
+            n_iter_no_change=50,
+        ),
+        "Linear Regression": LinearRegression(),
+        "Polynomial Regression": make_pipeline(
+            PolynomialFeatures(degree=poly_degree), LinearRegression()
+        ),
+        "Random Forest": RandomForestRegressor(
+            n_estimators=n_estimators, random_state=42
+        ),
+    }
+
+    # Se o usuário especificar um modelo, utiliza apenas ele
+    if model_type:
+        if model_type not in model_defs_raw:
+            logging.error(f"Modelo especificado '{model_type}' não é válido.")
+            return None, None
+        model_defs = {model_type: model_defs_raw[model_type]}
+    else:
+        model_defs = model_defs_raw
+
+    # Inicializa estruturas de controle
+    kf = KFold(n_splits=kfolds, shuffle=True, random_state=42)
+    X_reset, y_reset = X.reset_index(drop=True), y.reset_index(drop=True)
+    best_model = None
+    best_name = None
+    best_mse = float("inf")
+    results = []
+    resultadosHoldOut = "\n"
+
+    # Separa os dados em treino e validação final (hold-out), se necessário
+    if test_size > 0:
+        X_train_full, X_val, y_train_full, y_val = train_test_split(
+            X_reset, y_reset, test_size=test_size, random_state=42
+        )
+    else:
+        X_train_full, y_train_full = X_reset, y_reset
+        X_val, y_val = None, None
+
+    # Loop principal de avaliação de modelos
+    for name, model in model_defs.items():
+        mse_scores = []
+        mae_scores = []
+        r2_scores = []
+        std_errors = []
+
+        # Validação cruzada K-Fold
+        for train_idx, test_idx in kf.split(X_train_full):
+            X_train, X_test = X_train_full.iloc[train_idx], X_train_full.iloc[test_idx]
+            y_train, y_test = y_train_full.iloc[train_idx], y_train_full.iloc[test_idx]
+            try:
+                model.fit(X_train, y_train)
+                y_pred = model.predict(X_test)
+                mse_scores.append(mean_squared_error(y_test, y_pred))
+                mae_scores.append(mean_absolute_error(y_test, y_pred))
+                r2_scores.append(r2_score(y_test, y_pred))
+                std_errors.append(np.std(y_test - y_pred))
+            except Exception as e:
+                logging.error(f"Erro no modelo {name}, Fold: {e}")
+
+        # Avaliação final em hold-out
+        if test_size > 0 and X_val is not None:
+            try:
+                model.fit(X_train_full, y_train_full)
+                y_val_pred = model.predict(X_val)
+                resultadosHoldOut += f"[{pair_name}] {name} - Hold-Out -> R2: {r2_score(y_val, y_val_pred):.4f}, MAE: {mean_absolute_error(y_val, y_val_pred):.2f}, MSE: {mean_squared_error(y_val, y_val_pred):.2f}\n"
+            except Exception as e:
+                logging.error(f"Erro ao avaliar {name} no hold-out: {e}")
+
+        # Armazena os resultados médios
+        if len(mse_scores) > 0:
+            avg_mse = np.mean(mse_scores)
+            results.append(
+                {
+                    "Model": name,
+                    "Avg MSE": avg_mse,
+                    "Avg MAE": np.mean(mae_scores),
+                    "Avg R2": np.mean(r2_scores),
+                    "Avg Std Error": np.mean(std_errors),
+                }
+            )
+            # Atualiza o melhor modelo
+            if avg_mse < best_mse:
+                best_mse = avg_mse
+                best_model = model
+                best_name = name
+
+    # Mostra a comparação de modelos no log
+    df_results = pd.DataFrame(results)
+    logging.info(
+        f"\n*** Comparação de Modelos para {pair_name} ***\n{df_results.to_string()}"
+    )
+    logging.info(resultadosHoldOut)
+
+    # Informações detalhadas do melhor modelo
+    if best_name:
+        logging.info(f"Melhor Regressor para {pair_name} (baseado em MSE): {best_name}")
+        mlp_row = df_results[df_results["Model"] == "MLP"]
+        if not mlp_row.empty and best_name != "MLP":
+            std_err_mlp = mlp_row["Avg Std Error"].iloc[0]
+            std_err_best = df_results[df_results["Model"] == best_name][
+                "Avg Std Error"
+            ].iloc[0]
+            logging.info(f"Erro Padrão do MLP: {std_err_mlp:.4f}")
+            logging.info(
+                f"Erro Padrão do Melhor Regressor ({best_name}): {std_err_best:.4f}"
+            )
+            logging.info(
+                f"Diferença no Erro Padrão (MLP vs Melhor): {abs(std_err_mlp - std_err_best):.4f}"
+            )
+
+        # Salva o melhor modelo e as features se solicitado
+        if models_folder and best_model:
+            try:
+                best_model.fit(X_reset, y_reset)
+                model_path = os.path.join(
+                    models_folder,
+                    f"{best_name.lower().replace(' ', '')}_{pair_name}.pkl",
+                )
+                joblib.dump(best_model, model_path)
+                logging.info(f"Melhor modelo ({best_name}) salvo em: {model_path}")
+                features_path = os.path.join(
+                    models_folder, f"features_{pair_name}.json"
+                )
+                with open(features_path, "w") as f:
+                    json.dump(X.columns.tolist(), f)
+            except Exception as e:
+                logging.error(f"Erro ao salvar modelo final: {e}")
+
+    # Geração de gráficos e análise de equações
+    try:
+        _plot_scatter_comparison(X_reset, y_reset, model_defs, pair_name, plots_folder)
+        _log_coefficients(X_reset, y_reset, model_defs, pair_name)
+    except Exception as e:
+        logging.error(f"Erro ao gerar gráficos ou coeficientes: {e}")
+
+    return best_model, best_name

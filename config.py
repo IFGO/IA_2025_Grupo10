@@ -37,16 +37,16 @@ As configurações estão agrupadas nas seguintes categorias:
 """
 
 CRIPTOS_PARA_BAIXAR = [
-    #    "BTC",
+    "BTC",
     "ETH",
-    #    "LTC",
-    #    "XRP",
-    #    "BCH",
-    #    "XMR",
+    # "LTC",
+    # "XRP",
+    # "BCH",
+    # "XMR",
     "DASH",
-    #    "ETC",
-    #    "ZRX",
-    #    "EOS",
+    # "ETC",
+    # "ZRX",
+    # "EOS",
 ]
 
 MOEDA_COTACAO = "USDT"
