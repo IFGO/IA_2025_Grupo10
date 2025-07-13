@@ -70,7 +70,7 @@ DEFAULT_POLY_DEGREE = 2
 N_ESTIMATORS_RF = 100
 DEFAULT_K_BEST = 6  # Número de features a serem selecionadas pelo SelectKBest fora a cotação do dólar, caso acionado por --use_usd_brl
 DEFAULT_VALIDATION_SPLIT = (
-    0.5  # Proporção de dados para validação final (20% do total, 80% treino)
+    0.5  # Proporção de dados para validação final (50% do total, 50% treino)
 )
 
 MOVING_AVERAGE_WINDOWS = [7, 14, 30]
