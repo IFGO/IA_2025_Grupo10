@@ -8,11 +8,16 @@ logging.basicConfig(level=logging.CRITICAL)
 
 # Removido mock_csv_data fixture, pois o mock_read_csv agora retorna o DataFrame diretamente
 
+"""
+    Testa o carregamento bem-sucedido de um arquivo CSV com dados de criptomoeda.
 
+    - Cria um arquivo temporário com conteúdo simulado (datas e preços).
+    - Usa monkeypatch para simular o caminho do arquivo dentro da função.
+    - Verifica se o DataFrame retornado não está vazio, tem colunas esperadas
+      e tipos corretos.
+"""
 def test_load_crypto_data_success(tmp_path,monkeypatch):  # type: ignore
-    """
-    Testa o carregamento bem-sucedido de dados de criptomoeda.
-    """
+
     # mockup alterado para cobrir nao só o read_csv mas também o open()
     data_dir = tmp_path / "raw"
     data_dir.mkdir()
@@ -51,11 +56,14 @@ def test_load_crypto_data_success(tmp_path,monkeypatch):  # type: ignore
     assert len(df) == 3
     assert df["close"].iloc[0] == 100.0
 
+"""
+    Testa o comportamento da função ao carregar um arquivo CSV vazio.
 
+    - Substitui a função `pd.read_csv` por uma versão que retorna um DataFrame vazio.
+    - Espera que a função `load_crypto_data` retorne `None` nesse caso.
+"""
 def test_load_crypto_data_empty_data(monkeypatch):  # type: ignore
-    """
-    Testa o carregamento de dados vazios.
-    """
+
 
     def mock_read_csv_empty(url, skiprows=1):  # type: ignore
         return pd.DataFrame(columns=["date", "close"])  # Retorna DataFrame vazio
@@ -65,11 +73,14 @@ def test_load_crypto_data_empty_data(monkeypatch):  # type: ignore
     df = load_crypto_data(base_symbol="BTC", quote_symbol="USDT", timeframe="d")
     assert df is None  # Espera None para DataFrame vazio
 
+"""
+    Testa se a função trata corretamente um erro HTTP (como um 404).
 
+    - Simula um erro HTTP ao tentar carregar o CSV.
+    - Espera que a função retorne `None` em caso de falha na requisição.
+"""
 def test_load_crypto_data_http_error(monkeypatch):  # type: ignore
-    """
-    Testa o tratamento de erro HTTP (ex: 404 Not Found).
-    """
+
 
     def mock_read_csv_http_error(url, skiprows=1):  # type: ignore
         from urllib.error import HTTPError
@@ -81,11 +92,14 @@ def test_load_crypto_data_http_error(monkeypatch):  # type: ignore
     df = load_crypto_data(base_symbol="BTC", quote_symbol="USDT", timeframe="d")
     assert df is None
 
+"""
+    Testa o comportamento quando a coluna 'close' está ausente no DataFrame carregado.
 
+    - Simula um arquivo CSV com colunas incompletas.
+    - Espera que a função retorne `None` devido à ausência da coluna essencial 'close'.
+"""
 def test_load_crypto_data_missing_close_column(monkeypatch):  # type: ignore
-    """
-    Testa o cenário onde a coluna 'close' está faltando.
-    """
+
 
     def mock_read_csv_no_close(url, skiprows=1):  # type: ignore
         data = {"date": pd.to_datetime(["2023-01-01"]), "open": [100.0]}  # type: ignore

@@ -5,14 +5,23 @@ import os
 import shutil
 from src import statistical_tests as sa
 
-
+"""
+    Cria um diretório temporário chamado 'reports' para armazenar relatórios gerados
+    durante os testes estatísticos.
+"""
 @pytest.fixture
 def setup_folder(tmp_path):
     path = tmp_path / "reports"
     path.mkdir()
     return str(path)
 
+"""
+    Testa a função `_calculate_daily_returns` com um DataFrame de preços válidos.
 
+    Verifica:
+        - Se o número de retornos calculados está correto.
+        - Se os valores retornados estão corretos em relação ao cálculo manual esperado.
+"""
 def test_calculate_daily_returns_valid():
     prices = pd.DataFrame({"close": [100, 102, 101, 103]})
     returns = sa._calculate_daily_returns(prices).reset_index(drop=True)
@@ -23,18 +32,35 @@ def test_calculate_daily_returns_valid():
     assert len(returns) == len(expected)
     assert all(np.isclose(returns, expected, rtol=1e-5))
 
+"""
+    Testa a função `_calculate_daily_returns` com um DataFrame vazio.
+
+    Verifica:
+        - Se o retorno da função também é vazio.
+"""
 def test_calculate_daily_returns_empty():
     df = pd.DataFrame({"close": []})
     returns = sa._calculate_daily_returns(df)
     assert returns.empty
 
+"""
+    Testa a função `_calculate_daily_returns` quando a coluna 'close' está ausente.
 
+    Verifica:
+        - Se a função retorna um DataFrame vazio em caso de estrutura inválida.
+"""
 def test_calculate_daily_returns_missing_column():
     df = pd.DataFrame({"open": [1, 2, 3]})
     returns = sa._calculate_daily_returns(df)
     assert returns.empty
 
+"""
+    Testa a função `perform_hypothesis_test` com dados simulados válidos.
 
+    Verifica:
+        - Se o relatório de teste de hipótese é gerado corretamente.
+        - Se o conteúdo do relatório contém o termo "Retorno Médio da Amostra".
+"""
 def test_perform_hypothesis_test_creates_report(setup_folder):
     np.random.seed(0)
     returns = np.random.normal(0.001, 0.01, 100)
@@ -55,7 +81,12 @@ def test_perform_hypothesis_test_creates_report(setup_folder):
         content = f.read()
     assert "Retorno Médio da Amostra" in content
 
+"""
+    Testa a função `perform_hypothesis_test` com um DataFrame vazio.
 
+    Verifica:
+        - Se nenhum relatório é gerado quando os dados são insuficientes.
+"""
 def test_perform_hypothesis_test_empty_df(setup_folder):
     df = pd.DataFrame({"close": []})
     sa.perform_hypothesis_test(
@@ -67,7 +98,14 @@ def test_perform_hypothesis_test_empty_df(setup_folder):
     report_path = os.path.join(setup_folder, "hypothesis_test_report_EMPTY.txt")
     assert not os.path.exists(report_path)  # nada deve ser gerado
 
+"""
+    Testa a função `perform_anova_analysis` com dados simulados para 3 criptomoedas
+    com diferentes perfis de retorno médio.
 
+    Verifica:
+        - Se os relatórios de ANOVA e os gráficos do teste de Tukey são gerados corretamente.
+        - Se todos os arquivos esperados estão presentes na pasta de saída.
+"""
 def test_perform_anova_analysis_creates_reports(setup_folder):
     np.random.seed(42)
     days = 200
@@ -95,6 +133,12 @@ def test_perform_anova_analysis_creates_reports(setup_folder):
 
     assert not missing_files, f"Os seguintes arquivos esperados não foram gerados: {missing_files}"
 
+"""
+    Testa a função `perform_anova_analysis` com dados insuficientes (DataFrames vazios).
+
+    Verifica:
+        - Se nenhum relatório é gerado quando os dados de entrada não permitem análise estatística.
+"""
 def test_perform_anova_analysis_insufficient_data(setup_folder):
     mock_data = {
         "BTC_USDT": pd.DataFrame({"close": []}),
