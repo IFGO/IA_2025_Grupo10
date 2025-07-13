@@ -28,10 +28,7 @@ temp/
 tmp/
 
 # Arquivos de dados gerados
-data/raw/*.csv # Ignora os CSVs baixados, se você não quiser versioná-los
-data/processed/*.csv # Ignora os CSVs processados
-figures/ # Ignora a pasta de figuras geradas
-models/ # Ignora os modelos treinados
+data/
 
 # Arquivos de cobertura de teste
 .coverage
@@ -48,4 +45,3 @@ htmlcov/ # Pasta gerada pelo pytest-cov
 # Arquivos de Jupyter Notebook
 .ipynb_checkpoints/
 analysis
-data/raw
