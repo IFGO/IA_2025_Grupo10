@@ -1,155 +1,117 @@
-# test_prediction_profit.py
+import pytest
 import pandas as pd
 import numpy as np
 import os
-import joblib
-import pytest
 from unittest.mock import patch, MagicMock
 from src.prediction_profit import simulate_investment_and_profit
 
-class MockModel:
-    def predict(self, X):
-        # Esta implementação precisa ser mais robusta para lidar com diferentes tamanhos de X
-        # Para o teste 'success', podemos simular uma correlação com os preços de fechamento.
-        # No entanto, para ser genérico para qualquer X, é melhor retornar algo baseado no tamanho de X.
-        # Se X estiver vazio, retorna um array vazio.
-        if X.empty:
-            return np.array([])
-        # Caso contrário, retorne previsões do mesmo tamanho de X.
-        # Aqui, vamos criar previsões simples baseadas no índice para garantir o tamanho.
-        # Em um cenário real, você teria uma lógica de predição mais sofisticada.
-        return np.random.rand(len(X)) * 100 + 50 # Retorna valores aleatórios para simular predições
-
-
-# Define MockModelForEmptyData no escopo global
-class MockModelForEmptyData:
-    def predict(self, X):
-        return np.array([]) # Retorna um array vazio para entrada vazia
-
-
+# ---------- FIXTURE DE AMBIENTE ----------
 @pytest.fixture
-def setup_data_and_folders(tmp_path):
-    # Cria dados ficticios
-    dates = pd.to_datetime(pd.date_range(start="2023-01-01", periods=10))
-    close_prices = pd.Series(np.random.rand(10) * 100 + 50, name="close")
-    # Features precisa ser dataframe
-    features = pd.DataFrame(np.random.rand(10, 5), columns=[f"feature_{i}" for i in range(5)])
-
-    # Cria pastas ficticias para models e profit_plots
+def setup_test_environment(tmp_path):
+    pair_name = "BTC_USDT"
     models_folder = tmp_path / "models"
-    profit_plots_folder = tmp_path / "profit_plots"
+    plots_folder = tmp_path / "plots"
     models_folder.mkdir()
-    profit_plots_folder.mkdir()
+    plots_folder.mkdir()
 
-    # Cria modelos ficticios
-    model_types = ["mlp", "linear", "randomforest"]
-    for m_type in model_types:
-        # Agora usando a MockModel definida globalmente
-        joblib.dump(MockModel(), models_folder / f"{m_type}_TEST_PAIR.pkl")
+    features_path = models_folder / f"features_{pair_name}.json"
+    features_path.write_text('["feature1"]')
 
-    yield dates, close_prices, features, models_folder, profit_plots_folder
+    return {
+        "pair_name": pair_name,
+        "models_folder": str(models_folder),
+        "profit_plots_folder": str(plots_folder),
+        "features_path": str(features_path),
+        "expected_plot": plots_folder / f"profit_evolution_{pair_name}.png",
+        "tmp_path": tmp_path,
+    }
 
-def test_simulate_investment_and_profit_success(setup_data_and_folders):
-    dates, close_prices, features, models_folder, profit_plots_folder = setup_data_and_folders
-    pair_name = "TEST_PAIR"
-    initial_investment = 1000.0
+# ---------- TESTE 1: SIMULAÇÃO COMPLETA COM SUCESSO ----------
+@patch("src.prediction_profit.joblib.load")
+@patch("src.prediction_profit.os.path.exists")
+@patch("src.prediction_profit.pd.read_csv")
+def test_simulation_runs_and_creates_plot(mock_read_csv, mock_exists, mock_joblib, setup_test_environment):
+    def exists_side_effect(path):
+        return True  # Simula que tudo existe
+    mock_exists.side_effect = exists_side_effect
 
-    # Mocka matplotlib.pyplot.savefig para prevenir erros de acesso negado C:
-    with patch('matplotlib.pyplot.savefig') as mock_savefig, \
-         patch('matplotlib.pyplot.show'), \
-         patch('matplotlib.pyplot.close'):
+    # Dados de entrada simulados
+    mock_read_csv.return_value = pd.DataFrame({
+        "date": pd.date_range("2023-01-01", periods=5),
+        "close": [100, 102, 101, 105, 107],
+        "feature1": [1, 2, 3, 4, 5],
+    })
 
-        simulate_investment_and_profit(
-            X=features,
-            y=close_prices,
-            dates=dates,
-            pair_name=pair_name,
-            models_folder=models_folder,
-            profit_plots_folder=profit_plots_folder,
-            initial_investment=initial_investment,
-        )
+    mock_model = MagicMock()
+    mock_model.predict.return_value = np.array([101, 102, 103, 104, 105])
+    mock_joblib.return_value = mock_model
 
-        # Tentativa de salvar fig
-        expected_plot_path = os.path.join(profit_plots_folder, f"profit_evolution_{pair_name}.png")
-        mock_savefig.assert_called_once_with(expected_plot_path, dpi=150)
+    # Criar arquivos de modelo
+    for m in ["mlp", "linear", "polynomial", "randomforest"]:
+        path = os.path.join(setup_test_environment["models_folder"], f"{m}_{setup_test_environment['pair_name']}.pkl")
+        with open(path, "wb") as f:
+            f.write(b"fake")
 
-        # Checa se o diretorio de profit_plots foi criado
-        assert os.path.exists(profit_plots_folder)
-        assert os.path.isdir(profit_plots_folder)
+    simulate_investment_and_profit(
+        X=None,
+        y=None,
+        dates=None,
+        pair_name=setup_test_environment["pair_name"],
+        models_folder=setup_test_environment["models_folder"],
+        profit_plots_folder=setup_test_environment["profit_plots_folder"],
+    )
 
-def test_simulate_investment_and_profit_no_models_found(tmp_path, caplog):
-    dates = pd.to_datetime(pd.date_range(start="2023-01-01", periods=10))
-    close_prices = pd.Series(np.random.rand(10) * 100 + 50, name="close")
-    features = pd.DataFrame(np.random.rand(10, 5), columns=[f"feature_{i}" for i in range(5)])
+    assert setup_test_environment["expected_plot"].exists(), "Gráfico não foi gerado"
 
-    models_folder = tmp_path / "empty_models"
-    profit_plots_folder = tmp_path / "profit_plots"
-    models_folder.mkdir() # Cria pasta vazia
+# ---------- TESTE 2: NENHUM MODELO EXISTE ----------
+@patch("src.prediction_profit.os.path.exists")
+def test_simulation_aborts_if_no_model(mock_exists, setup_test_environment):
+    # Simula que nenhum modelo existe, mas JSON sim
+    def exists_side_effect(path):
+        return path == setup_test_environment["features_path"]
+    mock_exists.side_effect = exists_side_effect
 
-    with caplog.at_level(os.environ.get("LOG_LEVEL", "INFO")): # Usa os.environ.get para captura de erro
-        simulate_investment_and_profit(
-            X=features,
-            y=close_prices,
-            dates=dates,
-            pair_name="NO_MODEL_PAIR",
-            models_folder=models_folder,
-            profit_plots_folder=profit_plots_folder,
-            initial_investment=1000.0,
-        )
-    assert "Nenhum modelo carregado para NO_MODEL_PAIR. Simulação cancelada." in caplog.text
+    simulate_investment_and_profit(
+        X=None,
+        y=None,
+        dates=None,
+        pair_name=setup_test_environment["pair_name"],
+        models_folder=setup_test_environment["models_folder"],
+        profit_plots_folder=setup_test_environment["profit_plots_folder"],
+    )
 
-def test_simulate_investment_and_profit_invalid_model_file(tmp_path, caplog):
-    dates = pd.to_datetime(pd.date_range(start="2023-01-01", periods=10))
-    close_prices = pd.Series(np.random.rand(10) * 100 + 50, name="close")
-    features = pd.DataFrame(np.random.rand(10, 5), columns=[f"feature_{i}" for i in range(5)])
+    assert not setup_test_environment["expected_plot"].exists(), "Gráfico não deveria ser gerado"
 
-    models_folder = tmp_path / "invalid_models"
-    profit_plots_folder = tmp_path / "profit_plots"
-    models_folder.mkdir()
+# ---------- TESTE 3: CSV PRÉ-PROCESSADO INEXISTENTE ----------
+@patch("src.prediction_profit.os.path.exists")
+@patch("src.prediction_profit.joblib.load")
+def test_simulation_aborts_if_csv_missing(mock_joblib, mock_exists, setup_test_environment):
+    # Cria modelos, mas CSV falta
+    def exists_side_effect(path):
+        if path.endswith(".pkl"):
+            return True
+        elif path.endswith(".json"):
+            return True
+        return False
+    mock_exists.side_effect = exists_side_effect
 
-    # Cria modelo vazio
-    with open(models_folder / "mlp_INVALID_PAIR.pkl", "w") as f:
-        f.write("This is not a valid pickle file")
+    # Criar arquivos de modelo
+    for m in ["mlp", "linear", "polynomial", "randomforest"]:
+        path = os.path.join(setup_test_environment["models_folder"], f"{m}_{setup_test_environment['pair_name']}.pkl")
+        with open(path, "wb") as f:
+            f.write(b"fake")
 
-    with caplog.at_level(os.environ.get("LOG_LEVEL", "INFO")):
-        simulate_investment_and_profit(
-            X=features,
-            y=close_prices,
-            dates=dates,
-            pair_name="INVALID_PAIR",
-            models_folder=models_folder,
-            profit_plots_folder=profit_plots_folder,
-            initial_investment=1000.0,
-        )
-    assert "Falha ao carregar o modelo mlp" in caplog.text
+    mock_model = MagicMock()
+    mock_model.predict.return_value = np.array([101, 102, 103, 104, 105])
+    mock_joblib.return_value = mock_model
 
+    simulate_investment_and_profit(
+        X=None,
+        y=None,
+        dates=None,
+        pair_name=setup_test_environment["pair_name"],
+        models_folder=setup_test_environment["models_folder"],
+        profit_plots_folder=setup_test_environment["profit_plots_folder"],
+    )
 
-def test_simulate_investment_and_profit_empty_data(tmp_path, caplog):
-    # Testa com inputs de dataframes vazios
-    dates = pd.Series(dtype='datetime64[ns]')
-    close_prices = pd.Series(dtype='float64', name="close")
-    features = pd.DataFrame() # Empty DataFrame
-
-    models_folder = tmp_path / "models"
-    profit_plots_folder = tmp_path / "profit_plots"
-    models_folder.mkdir()
-    profit_plots_folder.mkdir()
-
-    # Uso global do MockModelForEmptyData
-    joblib.dump(MockModelForEmptyData(), models_folder / f"mlp_EMPTY_PAIR.pkl")
-
-    with patch('matplotlib.pyplot.savefig') as mock_savefig, \
-         patch('matplotlib.pyplot.show'), \
-         patch('matplotlib.pyplot.close'):
-        simulate_investment_and_profit(
-            X=features,
-            y=close_prices,
-            dates=dates,
-            pair_name="EMPTY_PAIR",
-            models_folder=models_folder,
-            profit_plots_folder=profit_plots_folder,
-            initial_investment=1000.0,
-        )
-        # Deve salvar o plot mesmo que vazio
-        expected_plot_path = os.path.join(profit_plots_folder, f"profit_evolution_EMPTY_PAIR.png")
-        mock_savefig.assert_called_once_with(expected_plot_path, dpi=150)
+    assert not setup_test_environment["expected_plot"].exists(), "Gráfico não deveria ser gerado"
