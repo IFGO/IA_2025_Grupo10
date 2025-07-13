@@ -2,6 +2,7 @@
 import logging
 from typing import List, Optional
 import numpy as np
+from sklearn.feature_selection import SelectKBest, f_regression
 
 
 """
@@ -43,7 +44,7 @@ def remove_high_vif_features(X: pd.DataFrame, threshold: float = 5.0) -> pd.Data
     """
     X = X.copy()  # type: ignore
     while True:
-        X = X.select_dtypes(include=[np.number]).astype(np.float64)
+        X = X.select_dtypes(include=[np.number]).astype(np.float64)  # type: ignore
         vif = pd.Series(
             [variance_inflation_factor(X.values, i) for i in range(X.shape[1])],
             index=X.columns,
@@ -58,14 +59,9 @@ def remove_high_vif_features(X: pd.DataFrame, threshold: float = 5.0) -> pd.Data
     return X
 
 
-from typing import List, Optional
-from sklearn.feature_selection import SelectKBest, f_regression
-import logging
-
-
 def preprocess_features(
     X: pd.DataFrame,
-    y: pd.Series,
+    y: pd.Series,  # type: ignore
     vif_threshold: float = 10.0,
     k_best: int = 10,
     force_include: Optional[List[str]] = None,
@@ -94,13 +90,13 @@ def preprocess_features(
     # Padroniza os dados com StandardScaler (após VIF)
     scaler = StandardScaler()
     X_scaled = pd.DataFrame(
-        scaler.fit_transform(X_vif), columns=X_vif.columns, index=X_vif.index
+        scaler.fit_transform(X_vif), columns=X_vif.columns, index=X_vif.index  # type: ignore
     )
 
     # Aplica SelectKBest para selecionar as k melhores variáveis
     k_best = min(k_best, X_vif.shape[1])
     selector = SelectKBest(score_func=f_regression, k=k_best)
-    selector.fit(X_scaled, y)
+    selector.fit(X_scaled, y)  # type: ignore
     selected_columns = X_scaled.columns[selector.get_support()].tolist()
 
     # Garante que variáveis obrigatórias (ex: usd_brl) sejam mantidas
@@ -112,7 +108,7 @@ def preprocess_features(
                 )
                 # Padroniza individualmente e adiciona à matriz
                 scaler_single = StandardScaler()
-                X_scaled[col] = scaler_single.fit_transform(X[[col]])
+                X_scaled[col] = scaler_single.fit_transform(X[[col]])  # type: ignore
                 selected_columns.append(col)
 
     logging.info(f"[SelectKBest] Features selecionadas: {selected_columns}")

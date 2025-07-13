@@ -34,7 +34,7 @@ from src.data_loader import load_crypto_data
 from src.data_visualizer import plot_crypto_data
 from src.data_analyzer import calculate_statistics, generate_analysis_plots, calculate_comparative_variability  # type: ignore
 from src.feature_engineering import create_technical_features
-from src.model_training import train_and_compare_models, train_and_evaluate_model, compare_models, limpar_modelos_antigos  # type: ignore
+from src.model_training import train_and_evaluate_model, compare_models, limpar_modelos_antigos  # type: ignore
 from src.prediction_profit import simulate_investment_and_profit  # type: ignore
 from src.statistical_tests import perform_hypothesis_test, perform_anova_analysis
 from src.feature_engineering import enrich_with_external_features
@@ -60,12 +60,14 @@ from config import (
     STATS_REPORTS_FOLDER,
     DEFAULT_KFOLDS,
     DEFAULT_TARGET_RETURN_PERCENT,
-    DEFAULT_POLY_DEGREE,
+    DEFAULT_POLY_DEGREE,  # type: ignore
     LOG_LEVEL,
     FEATURES_CANDIDATAS,
     INITIAL_INVESTMENT,
     USE_USD_BRL,
     N_ESTIMATORS_RF,
+    DEFAULT_K_BEST,
+    DEFAULT_VALIDATION_SPLIT,
 )
 
 
@@ -144,7 +146,7 @@ def main():
     parser.add_argument(
         "--validation_split",
         type=float,
-        default=0.3,
+        default=DEFAULT_VALIDATION_SPLIT,
         help="Fração dos dados usada como hold-out para validação final (ex: 0.3 = 30%, 0.0 = sem separação pra hold-out).",
     )
     parser.add_argument(
@@ -177,9 +179,8 @@ def main():
     ]:
         os.makedirs(folder, exist_ok=True)
 
-    # Limpa pastas de saída intermediárias e modelos antigos
     if args.action == "all":
-        logging.info("Limpando pastas de saída e modelos antigos...")
+        # Limpa pastas de saída intermediárias e modelos antigos
         limpar_pastas_saida()
 
     all_dfs: Dict[str, pd.DataFrame] = {}
@@ -271,123 +272,18 @@ def main():
                     f"Features para {pair_key} salvas em: {processed_filepath}"
                 )
 
-    # if args.action in ["all", "train"]:
-    #     if not all_processed_dfs:
-    #         logging.error("Nenhum dado processado disponível para a ação 'train'.")
-    #     else:
-    #         logging.info("Iniciando treinamento e avaliação de modelos.")
-    #         for pair_key, df_featured in all_processed_dfs.items():
-    #             logging.info(f"Processando modelos para {pair_key}...")
-    #             features = [
-    #                 col for col in FEATURES_CANDIDATAS if col in df_featured.columns
-    #             ]
-    #             # Adiciona usd_brl se for solicitado e existir no dataframe
-    #             if (
-    #                 args.use_usd_brl
-    #                 and "usd_brl" in df_featured.columns
-    #                 and "usd_brl" not in features
-    #             ):
-    #                 features.append("usd_brl")
-    #                 logging.info(
-    #                     "[main] Feature 'usd_brl' adicionada dinamicamente às FEATURES_CANDIDATAS."
-    #                 )
-    #
-    #             y = df_featured["close"]  # type: ignore
-    #             mask = ~y.isna()
-    #             df_filtered = df_featured[mask].copy()
-    #
-    #             # Aplica o pipeline de seleção com VIF + SelectKBest, forçando inclusão de usd_brl se necessário
-    #             X_clean = preprocess_features(
-    #                 df_filtered.drop(columns=["close"]),
-    #                 y[mask],
-    #                 k_best=10,
-    #                 force_include=["usd_brl"] if args.use_usd_brl else None,
-    #             )
-    #             y_clean = y[mask]
-    #
-    #             if X_clean.empty:
-    #                 logging.warning(
-    #                     f"Sem dados suficientes para treinar modelos para {pair_key} após pré-processamento."
-    #                 )
-    #                 continue
-    #
-    #             # Inicia o treinamento de modelos
-    #             if args.model:
-    #                 # usa o modelo especificado pelo usuário
-    #                 train_and_evaluate_model(
-    #                     X_clean,
-    #                     y_clean,
-    #                     model_type=args.model,
-    #                     kfolds=args.kfolds,
-    #                     pair_name=pair_key,
-    #                     models_folder=MODELS_FOLDER,
-    #                     poly_degree=args.poly_degree,
-    #                     n_estimators=args.n_estimators,
-    #                     test_size=args.validation_split,
-    #                 )
-    #                 compare_models(
-    #                     X_clean,
-    #                     y_clean,
-    #                     kfolds=args.kfolds,
-    #                     pair_name=pair_key,
-    #                     plots_folder=ANALYSIS_FOLDER,
-    #                     poly_degree=args.poly_degree,
-    #                     n_estimators=args.n_estimators,
-    #                     test_size=args.validation_split,
-    #                 )
-    #             else:
-    #                 # modo automático: encontra e salva o melhor modelo
-    #                 best_model, best_name = get_best_model_by_mse(  # type: ignore
-    #                     X_clean,
-    #                     y_clean,
-    #                     kfolds=args.kfolds,
-    #                     poly_degree=args.poly_degree,
-    #                     n_estimators=args.n_estimators,
-    #                 )
-    #
-    #                 if best_model is not None:
-    #                     best_model.fit(X_clean, y_clean)  # type: ignore
-    #                     model_path = os.path.join(MODELS_FOLDER, f"{best_name.lower()}_{pair_key}.pkl")  # type: ignore
-    #                     joblib.dump(best_model, model_path)  # type: ignore
-    #                     logging.info(
-    #                         f"Melhor modelo ({best_name}) salvo em: {model_path}"
-    #                     )
-    #                     # Salva as features utilizadas para o modelo
-    #                     features_path = os.path.join(
-    #                         MODELS_FOLDER, f"features_{pair_key}.json"
-    #                     )
-    #                     with open(features_path, "w") as f:
-    #                         json.dump(X_clean.columns.tolist(), f)
-    #
-    #                     compare_models(
-    #                         X_clean,
-    #                         y_clean,
-    #                         kfolds=args.kfolds,
-    #                         pair_name=pair_key,
-    #                         plots_folder=ANALYSIS_FOLDER,
-    #                         poly_degree=args.poly_degree,
-    #                         n_estimators=args.n_estimators,
-    #                         test_size=args.validation_split,
-    #                     )
-    #                 else:
-    #                     logging.warning(
-    #                         f"Não foi possível determinar o melhor modelo para {pair_key}."
-    #                     )
-
     if args.action in ["all", "train"]:
         if not all_processed_dfs:
             logging.error("Nenhum dado processado disponível para a ação 'train'.")
+
         else:
             logging.info("Iniciando treinamento e avaliação de modelos.")
             for pair_key, df_featured in all_processed_dfs.items():
                 logging.info(f"Processando modelos para {pair_key}...")
-
-                # Seleciona features candidatas presentes no DataFrame
                 features = [
                     col for col in FEATURES_CANDIDATAS if col in df_featured.columns
                 ]
-
-                # Adiciona usd_brl se solicitado pelo usuário e disponível
+                # Adiciona usd_brl se for solicitado e existir no dataframe
                 if (
                     args.use_usd_brl
                     and "usd_brl" in df_featured.columns
@@ -398,19 +294,18 @@ def main():
                         "[main] Feature 'usd_brl' adicionada dinamicamente às FEATURES_CANDIDATAS."
                     )
 
-                # Filtra e prepara dados
-                y = df_featured["close"]
+                y = df_featured["close"]  # type: ignore
                 mask = ~y.isna()
                 df_filtered = df_featured[mask].copy()
 
-                # Aplica pré-processamento com VIF + SelectKBest
+                # Aplica o pipeline de seleção com VIF + SelectKBest, forçando inclusão de usd_brl se necessário
                 X_clean = preprocess_features(
                     df_filtered.drop(columns=["close"]),
                     y[mask],
-                    k_best=10,
+                    k_best=DEFAULT_K_BEST,
                     force_include=["usd_brl"] if args.use_usd_brl else None,
                 )
-                y_clean = y[mask]
+                y_clean = y[mask]  # type: ignore
 
                 if X_clean.empty:
                     logging.warning(
@@ -418,19 +313,80 @@ def main():
                     )
                     continue
 
-                # Chamada unificada: treina, compara, salva e gera gráficos
-                train_and_compare_models(
-                    X=X_clean,
-                    y=y_clean,
-                    kfolds=args.kfolds,
-                    pair_name=pair_key,
-                    plots_folder=ANALYSIS_FOLDER,
-                    poly_degree=args.poly_degree,
-                    n_estimators=args.n_estimators,
-                    test_size=args.validation_split,
-                    models_folder=MODELS_FOLDER,
-                    model_type=args.model if args.model else None,
-                )
+                # Inicia o treinamento de modelos
+                if args.model:
+                    # usa o modelo especificado pelo usuário
+                    train_and_evaluate_model(
+                        X_clean,
+                        y_clean,
+                        model_type=args.model,
+                        kfolds=args.kfolds,
+                        pair_name=pair_key,
+                        models_folder=MODELS_FOLDER,
+                        poly_degree=args.poly_degree,
+                        n_estimators=args.n_estimators,
+                        test_size=args.validation_split,
+                    )
+                    compare_models(
+                        X_clean,
+                        y_clean,
+                        kfolds=args.kfolds,
+                        pair_name=pair_key,
+                        plots_folder=ANALYSIS_FOLDER,
+                        poly_degree=args.poly_degree,
+                        n_estimators=args.n_estimators,
+                        test_size=args.validation_split,
+                    )
+                else:
+                    # modo automático: encontra e salva o melhor modelo
+                    best_model, best_name = get_best_model_by_mse(  # type: ignore
+                        X_clean,
+                        y_clean,
+                        kfolds=args.kfolds,
+                        poly_degree=args.poly_degree,
+                        n_estimators=args.n_estimators,
+                    )
+
+                    if best_model is not None:
+                        # Salva os dados de treino já com as features finais
+                        preprocessed_path = os.path.join(
+                            PROCESSED_DATA_FOLDER, f"preprocessed_{pair_key}.csv"
+                        )
+                        df_preprocessed = X_clean.copy()
+                        df_preprocessed["close"] = y_clean.values
+                        df_preprocessed["date"] = df_filtered["date"].values
+                        df_preprocessed.to_csv(preprocessed_path, index=False)
+                        logging.info(
+                            f"Dados pré-processados salvos para simulação em: {preprocessed_path}"
+                        )
+
+                        best_model.fit(X_clean, y_clean)  # type: ignore
+                        model_path = os.path.join(MODELS_FOLDER, f"{best_name.lower()}_{pair_key}.pkl")  # type: ignore
+                        joblib.dump(best_model, model_path)  # type: ignore
+                        logging.info(
+                            f"Melhor modelo ({best_name}) salvo em: {model_path}"
+                        )
+                        # Salva as features utilizadas para o modelo
+                        features_path = os.path.join(
+                            MODELS_FOLDER, f"features_{pair_key}.json"
+                        )
+                        with open(features_path, "w") as f:
+                            json.dump(X_clean.columns.tolist(), f)
+
+                        compare_models(
+                            X_clean,
+                            y_clean,
+                            kfolds=args.kfolds,
+                            pair_name=pair_key,
+                            plots_folder=ANALYSIS_FOLDER,
+                            poly_degree=args.poly_degree,
+                            n_estimators=args.n_estimators,
+                            test_size=args.validation_split,
+                        )
+                    else:
+                        logging.warning(
+                            f"Não foi possível determinar o melhor modelo para {pair_key}."
+                        )
 
     if args.action in ["all", "profit"]:
         if not all_processed_dfs:

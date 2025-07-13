@@ -67,7 +67,11 @@ STATS_REPORTS_FOLDER = "data/stats_reports"
 DEFAULT_KFOLDS = 5
 DEFAULT_TARGET_RETURN_PERCENT = 0.01
 DEFAULT_POLY_DEGREE = 2
-N_ESTIMATORS_RF = 150
+N_ESTIMATORS_RF = 100
+DEFAULT_K_BEST = 6  # Número de features a serem selecionadas pelo SelectKBest fora a cotação do dólar, caso acionado por --use_usd_brl
+DEFAULT_VALIDATION_SPLIT = (
+    0.2  # Proporção de dados para validação final (20% do total, 80% treino)
+)
 
 MOVING_AVERAGE_WINDOWS = [7, 14, 30]
 FEATURES_CANDIDATAS = [
@@ -84,10 +88,20 @@ FEATURES_CANDIDATAS = [
     "bb_lower",
     "bb_mavg",
     "daily_return",
+    "volume",
+    "buytakeramount",
+    "buytakerquantity",
+    "std7",
+    "std14",
+    "std30",
+    "volatility_7d",
+    "volatility_30d",
+    "rsi",
+    "obv",
 ]
 
 INITIAL_INVESTMENT = 1000.0
 
 LOG_LEVEL = "INFO"
 
-USE_USD_BRL = False
+USE_USD_BRL = True  # Se True, adiciona a cotação USD/BRL como feature obrigatória

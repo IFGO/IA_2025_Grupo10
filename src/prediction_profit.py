@@ -90,10 +90,25 @@ def simulate_investment_and_profit(
         logging.error(f"Nenhum modelo carregado para {pair_name}. Simulação cancelada.")
         return
 
-    data_df = pd.DataFrame({"date": dates, "close": y}).set_index(X.index)  # type: ignore
-    data_df = pd.concat([data_df, X], axis=1).sort_values("date").reset_index(drop=True)  # type: ignore
+    # Carrega os dados pré-processados com as features corretas
+    preprocessed_path = os.path.join("data/processed", f"preprocessed_{pair_name}.csv")
+    if not os.path.exists(preprocessed_path):
+        logging.warning(
+            f"Arquivo pré-processado não encontrado para {pair_name}. Simulação ignorada."
+        )
+        return
 
-    profit_evolution = pd.DataFrame({"date": data_df["date"]})
+    data_df = pd.read_csv(preprocessed_path)  # type: ignore
+    if "date" not in data_df.columns or "close" not in data_df.columns:
+        logging.warning(
+            f"Arquivo pré-processado inválido para {pair_name}. Simulação ignorada."
+        )
+        return
+
+    profit_evolution = pd.DataFrame(
+        {"date": pd.to_datetime(data_df["date"], errors="coerce")}  # type: ignore
+    )
+    profit_evolution = profit_evolution.dropna(subset=["date"])  # type: ignore
 
     for model_key, model in loaded_models.items():  # type: ignore
         logging.info(f"Executando simulação vetorizada para o modelo: {model_key}")
@@ -102,12 +117,16 @@ def simulate_investment_and_profit(
         features_path = os.path.join(models_folder, f"features_{pair_name}.json")
         if not os.path.exists(features_path):
             logging.warning(
-                f"Arquivo de features não encontrado para {pair_name}. Ignorando."
+                f"Arquivo de features não encontrado para {pair_name}. Ignorando modelo {model_key}."
             )
-            return
+            continue
 
-        with open(features_path, "r") as f:
-            trained_features = json.load(f)
+        try:
+            with open(features_path, "r") as f:
+                trained_features = json.load(f)
+        except Exception as e:
+            logging.error(f"Erro ao carregar JSON de features para {pair_name}: {e}")
+            continue
 
         # Garante que todas as features estejam presentes
         missing = [f for f in trained_features if f not in data_df.columns]
@@ -115,10 +134,16 @@ def simulate_investment_and_profit(
             logging.warning(
                 f"Features ausentes no dataset atual para {pair_name}: {missing}"
             )
-            return
+            logging.warning(
+                f"[{pair_name} - {model_key}] Features disponíveis: {list(data_df.columns)}"
+            )
+            logging.warning(
+                f"[{pair_name} - {model_key}] Features requeridas: {trained_features}"
+            )
+            continue
 
-        X = data_df[trained_features]
-        all_predictions = model.predict(X)
+        X = data_df[trained_features]  # type: ignore
+        all_predictions = model.predict(X)  # type: ignore
 
         last_known_price = data_df["close"].shift(1).fillna(0)  # type: ignore
         signals = np.where(all_predictions > last_known_price, 1, 0)  # type: ignore
