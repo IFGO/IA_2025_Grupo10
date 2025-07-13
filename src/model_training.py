@@ -328,7 +328,7 @@ def compare_models(
 
     if test_size > 0 and X_val is not None:
         # Plota o gráfico de dispersão para o conjunto de validação final, Ou seja, como o modelo se comparta com os dados de hold-out
-        plot_scatter_holdout(models, X_val, y_val, pair_name, plots_folder)
+        plot_scatter_holdout(models, X_val, y_val, pair_name, plots_folder)  # type: ignore
 
     best_regressor = df_results.loc[df_results["Avg MSE"].idxmin()]  # type: ignore
     logging.info(
@@ -404,7 +404,7 @@ def _plot_scatter_comparison(X, y, models, pair_name, plots_folder):  # type: ig
     logging.info(f"Diagrama de dispersão salvo em: {plot_path}")
 
 
-def plot_scatter_holdout(models, X_val, y_val, pair_name, plots_folder):
+def plot_scatter_holdout(models, X_val, y_val, pair_name, plots_folder):  # type: ignore
     """
     Gera um gráfico de dispersão usando o modelo escolhido no treino em k-fold para os dados de hold-out (validação final).
     Avalia o desempenho do modelo em relação aos valores reais do conjunto de validação.
@@ -417,43 +417,43 @@ def plot_scatter_holdout(models, X_val, y_val, pair_name, plots_folder):
         plots_folder (str): Caminho onde salvar o gráfico gerado.
     """
     try:
-        plt.figure(figsize=(12, 8))
+        plt.figure(figsize=(12, 8))  # type: ignore
         sns.set_palette("Set2")
 
-        for model_name, model in models.items():
+        for model_name, model in models.items():  # type: ignore
             try:
-                y_pred = model.predict(X_val)
-                plt.scatter(
-                    y_val,
-                    y_pred,
+                y_pred = model.predict(X_val)  # type: ignore
+                plt.scatter(  # type: ignore
+                    y_val,  # type: ignore
+                    y_pred,  # type: ignore
                     alpha=0.6,
-                    label=f"{model_name} (R2: {r2_score(y_val, y_pred):.4f})",
+                    label=f"{model_name} (R2: {r2_score(y_val, y_pred):.4f})",  # type: ignore
                 )
             except Exception as e:
                 logging.warning(f"[Hold-Out Scatter] Falha para {model_name}: {e}")
 
-        plt.plot(
-            [y_val.min(), y_val.max()],
-            [y_val.min(), y_val.max()],
+        plt.plot(  # type: ignore
+            [y_val.min(), y_val.max()],  # type: ignore
+            [y_val.min(), y_val.max()],  # type: ignore
             "k--",
             lw=2,
             label="Linha Ideal",
         )
-        plt.xlabel("Preço Real (USDT)")
-        plt.ylabel("Preço Previsto (USDT)")
-        plt.title(
+        plt.xlabel("Preço Real (USDT)")  # type: ignore
+        plt.ylabel("Preço Previsto (USDT)")  # type: ignore
+        plt.title(  # type: ignore
             f"Dispersão Hold-Out (Dados que o modelo não conhecia): Real vs. Previsto ({pair_name})"
         )
-        plt.legend()
-        plt.grid(True)
+        plt.legend()  # type: ignore
+        plt.grid(True)  # type: ignore
 
-        if not os.path.exists(plots_folder):
-            os.makedirs(plots_folder)
+        if not os.path.exists(plots_folder):  # type: ignore # type: ignore
+            os.makedirs(plots_folder)  # type: ignore
 
         plot_path = os.path.join(
-            plots_folder, f"scatter_holdout_{pair_name.replace(' ', '_')}.png"
+            plots_folder, f"scatter_holdout_{pair_name.replace(' ', '_')}.png"  # type: ignore
         )
-        plt.savefig(plot_path, dpi=150)
+        plt.savefig(plot_path, dpi=150)  # type: ignore
         plt.close()
         logging.info(f"Gráfico de dispersão (hold-out) salvo em: {plot_path}")
     except Exception as e:
