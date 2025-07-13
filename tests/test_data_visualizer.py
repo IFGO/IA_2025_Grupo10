@@ -8,23 +8,28 @@ from src.data_visualizer import plot_crypto_data
 # Configura o logging para evitar poluir a saída do teste
 logging.basicConfig(level=logging.CRITICAL)
 
-
+"""
+    Cria um DataFrame de exemplo com 50 dias de dados simulados de fechamento de preços ('close').
+    É utilizado como entrada para testar funções de visualização.
+"""
 @pytest.fixture
 def sample_visualizer_df():
-    """
-    Cria um DataFrame de exemplo para testes de data_visualizer.
-    """
+
     data = {  # type: ignore
         "date": pd.to_datetime(pd.date_range(start="2023-01-01", periods=50, freq="D")),  # type: ignore
         "close": np.random.rand(50) * 100 + 50,
     }
     return pd.DataFrame(data)
 
+"""
+    Testa se a função `plot_crypto_data` gera e salva corretamente um gráfico a partir do DataFrame fornecido.
 
+    - Cria uma pasta temporária para salvar o gráfico.
+    - Chama a função com dados válidos.
+    - Verifica se o arquivo PNG foi criado e se não está vazio.
+"""
 def test_plot_crypto_data(sample_visualizer_df, tmp_path):  # type: ignore
-    """
-    Testa se a função de plotagem simples funciona e salva o arquivo.
-    """
+
     save_folder = tmp_path / "simple_plots"  # type: ignore
     save_folder.mkdir()  # type: ignore
     pair_name = "TEST_PAIR_SIMPLE"
@@ -36,12 +41,16 @@ def test_plot_crypto_data(sample_visualizer_df, tmp_path):  # type: ignore
     assert os.path.exists(plot_path)
     assert os.path.getsize(plot_path) > 0  # Verifica se o arquivo não está vazio
 
+"""
+    Testa o comportamento da função ao receber um DataFrame vazio.
 
+    - Cria um DataFrame sem dados (linhas vazias).
+    - Usa o `caplog` para capturar mensagens de log.
+    - Verifica se a função gera um aviso de que o DataFrame está vazio.
+    - Garante que nenhum arquivo de imagem seja criado.
+"""
 def test_plot_crypto_data_empty_df(tmp_path, caplog):  # type: ignore # Adicionado caplog fixture
-    """
-    Testa o comportamento da função com um DataFrame vazio.
-    Deve emitir um warning e não criar o arquivo.
-    """
+
     save_folder = tmp_path / "simple_plots_empty"  # type: ignore
     save_folder.mkdir()  # type: ignore
     pair_name = "EMPTY_PAIR"

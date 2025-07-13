@@ -8,7 +8,10 @@ from src.data_analyzer import calculate_statistics, generate_analysis_plots, cal
 # Configura o logging para evitar poluir a saída do teste
 logging.basicConfig(level=logging.CRITICAL)
 
-
+"""
+    Cria um DataFrame de exemplo com dados simulados financeiros (datas, preços e volumes)
+    para usar nos testes das funções do módulo data_analyzer.
+"""
 @pytest.fixture
 def sample_analyzer_df():
     """
@@ -24,22 +27,25 @@ def sample_analyzer_df():
     }
     return pd.DataFrame(data)
 
-
+"""
+    Cria um dicionário contendo dois DataFrames simulados, representando dados de
+    duas criptomoedas diferentes, para testes comparativos.
+"""
 @pytest.fixture
 def sample_all_data_dict(sample_analyzer_df):  # type: ignore
-    """
-    Cria um dicionário de DataFrames para testes comparativos.
-    """
+
     df1 = sample_analyzer_df.copy()  # type: ignore
     df2 = sample_analyzer_df.copy()  # type: ignore
     df2["close"] = df2["close"] * 1.2  # Diferenciar um pouco
     return {"BTC_USDT": df1, "ETH_USDT": df2}  # type: ignore
 
-
+"""
+    Testa se a função calculate_statistics calcula corretamente as estatísticas descritivas
+    (média, desvio padrão, variância, assimetria, curtose) sobre o DataFrame de exemplo.
+    Verifica também se o número de elementos contado está correto.
+"""
 def test_calculate_statistics(sample_analyzer_df):  # type: ignore
-    """
-    Testa se o cálculo das estatísticas funciona e retorna as esperadas.
-    """
+
     stats = calculate_statistics(sample_analyzer_df)  # type: ignore
 
     assert "mean" in stats
@@ -51,11 +57,12 @@ def test_calculate_statistics(sample_analyzer_df):  # type: ignore
     assert np.isclose(stats["mean"], sample_analyzer_df["close"].mean())  # type: ignore
     assert np.isclose(stats["std"], sample_analyzer_df["close"].std())  # type: ignore
 
-
+"""
+    Testa se a função generate_analysis_plots gera um gráfico de análise a partir dos dados
+    de exemplo, salva o arquivo PNG no diretório temporário e se esse arquivo existe e não está vazio.
+"""
 def test_generate_analysis_plots(sample_analyzer_df, tmp_path):  # type: ignore
-    """
-    Testa se a geração de gráficos de análise funciona e salva o arquivo.
-    """
+    
     save_folder = tmp_path / "analysis_plots"  # type: ignore
     save_folder.mkdir()  # type: ignore
     pair_name = "TEST_PAIR"
@@ -66,11 +73,13 @@ def test_generate_analysis_plots(sample_analyzer_df, tmp_path):  # type: ignore
     assert os.path.exists(plot_path)
     assert os.path.getsize(plot_path) > 0  # Verifica se o arquivo não está vazio
 
-
+"""
+    Testa se a função calculate_comparative_variability calcula corretamente a variabilidade relativa
+    (coeficiente de variação) para cada criptomoeda no dicionário de dados, e se o DataFrame resultante
+    possui as colunas esperadas e os dados coerentes.
+"""
 def test_calculate_comparative_variability(sample_all_data_dict):  # type: ignore
-    """
-    Testa o cálculo da variabilidade comparativa.
-    """
+    
     df_variability = calculate_comparative_variability(sample_all_data_dict)  # type: ignore
 
     assert not df_variability.empty

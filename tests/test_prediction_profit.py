@@ -5,7 +5,12 @@ import os
 from unittest.mock import patch, MagicMock
 from src.prediction_profit import simulate_investment_and_profit
 
-# ---------- FIXTURE DE AMBIENTE ----------
+"""
+    Configura o ambiente temporário para os testes.
+
+    Cria pastas temporárias para modelos e plots, e gera um arquivo JSON de features
+    simulado para um par de moedas específico.
+"""    
 @pytest.fixture
 def setup_test_environment(tmp_path):
     pair_name = "BTC_USDT"
@@ -26,7 +31,12 @@ def setup_test_environment(tmp_path):
         "tmp_path": tmp_path,
     }
 
-# ---------- TESTE 1: SIMULAÇÃO COMPLETA COM SUCESSO ----------
+"""
+    Testa a simulação completa da função simulate_investment_and_profit com sucesso.
+
+    Simula a existência de arquivos necessários, cria dados de entrada fictícios,
+    e verifica se o gráfico de evolução do lucro é gerado corretamente.
+"""
 @patch("src.prediction_profit.joblib.load")
 @patch("src.prediction_profit.os.path.exists")
 @patch("src.prediction_profit.pd.read_csv")
@@ -63,7 +73,12 @@ def test_simulation_runs_and_creates_plot(mock_read_csv, mock_exists, mock_jobli
 
     assert setup_test_environment["expected_plot"].exists(), "Gráfico não foi gerado"
 
-# ---------- TESTE 2: NENHUM MODELO EXISTE ----------
+"""
+    Testa que a simulação aborta corretamente quando não existem arquivos de modelo.
+
+    Simula a existência apenas do arquivo JSON de features, sem modelos de previsão,
+    e verifica que nenhum gráfico é gerado.
+"""
 @patch("src.prediction_profit.os.path.exists")
 def test_simulation_aborts_if_no_model(mock_exists, setup_test_environment):
     # Simula que nenhum modelo existe, mas JSON sim
@@ -82,7 +97,12 @@ def test_simulation_aborts_if_no_model(mock_exists, setup_test_environment):
 
     assert not setup_test_environment["expected_plot"].exists(), "Gráfico não deveria ser gerado"
 
-# ---------- TESTE 3: CSV PRÉ-PROCESSADO INEXISTENTE ----------
+"""
+    Testa que a simulação aborta corretamente quando o CSV pré-processado está ausente.
+
+    Simula a existência dos modelos e do arquivo JSON de features, mas ausência do CSV,
+    e verifica que nenhum gráfico é gerado.
+"""
 @patch("src.prediction_profit.os.path.exists")
 @patch("src.prediction_profit.joblib.load")
 def test_simulation_aborts_if_csv_missing(mock_joblib, mock_exists, setup_test_environment):

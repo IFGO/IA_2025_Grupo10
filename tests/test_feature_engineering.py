@@ -31,11 +31,15 @@ def sample_dataframe():
     }
     return pd.DataFrame(data)
 
+"""
+    Testa a função `create_moving_average_features` para janelas de 7 e 14 dias.
 
+    - Verifica se as colunas de médias e desvios padrão foram adicionadas corretamente.
+    - Checa se não há NaNs nas partes esperadas das colunas.
+    - Valida um valor manual de média móvel para o 7º dia.
+"""
 def test_create_moving_average_features(sample_dataframe):  # type: ignore
-    """
-    Testa a criação de features de média móvel e desvio padrão.
-    """
+
     windows = [7, 14]
     df_featured = create_moving_average_features(sample_dataframe.copy(), windows)  # type: ignore
 
@@ -58,10 +62,16 @@ def test_create_moving_average_features(sample_dataframe):  # type: ignore
     expected_sma_7_val = sample_dataframe["close"].iloc[0:7].mean()  # type: ignore
     assert np.isclose(df_featured["sma_7"].iloc[6], expected_sma_7_val)  # type: ignore # Index 6 é o 7º dia
 
+"""
+    Testa a função `create_technical_features`, que adiciona múltiplas métricas financeiras (volatilidade, RSI, MACD, OBV etc).
+
+    - Verifica se todas as colunas esperadas estão presentes.
+    - Confirma que não há valores nulos após o `dropna`.
+    - Verifica o tamanho esperado do DataFrame após remoção de NaNs iniciais.
+    - Valida o valor da coluna `close_lag1` e do `daily_return` com cálculo manual.
+"""
 def test_create_technical_features(sample_dataframe):  # type: ignore
-    """
-    Testa a criação de features técnicas adicionais.
-    """
+
     df_featured = create_technical_features(sample_dataframe.copy())  # type: ignore
 
     # Verifica se as novas colunas foram criadas
@@ -128,7 +138,12 @@ def test_create_technical_features(sample_dataframe):  # type: ignore
     expected_daily_return_first = (sample_dataframe["close"].iloc[first_valid_idx_original_df] - sample_dataframe["close"].iloc[first_valid_idx_original_df - 1]) / sample_dataframe["close"].iloc[first_valid_idx_original_df - 1]  # type: ignore
     assert np.isclose(df_featured["daily_return"].iloc[0], expected_daily_return_first)  # type: ignore
 
-# teste com dataframes pequenos
+"""
+    Testa o comportamento da função `create_moving_average_features` com DataFrame menor do que a janela.
+
+    - Usa apenas 3 linhas com uma janela de 5 dias.
+    - Verifica se a coluna da média foi criada e contém apenas NaNs (como esperado).
+"""
 def test_create_moving_average_features_with_short_df():
     df_short = pd.DataFrame({
         "date": pd.date_range(start="2023-01-01", periods=3),
@@ -138,7 +153,12 @@ def test_create_moving_average_features_with_short_df():
     assert "sma_5" in result.columns
     assert result["sma_5"].isnull().all()  # Todos devem ser NaN
 
-# testar volume_eth e volume_ustd
+"""
+    Testa o fallback da função `create_technical_features` quando a coluna 'volume' padrão está ausente.
+
+    - Usa 'volume_usdt' ao invés de 'volume'.
+    - Verifica se o OBV (On-Balance Volume) é calculado mesmo assim.
+"""
 def test_create_technical_features_volume_fallback():
     df = pd.DataFrame({
         "date": pd.date_range(start="2023-01-01", periods=40),
@@ -151,12 +171,21 @@ def test_create_technical_features_volume_fallback():
     result = create_technical_features(df)
     assert "obv" in result.columns
 
-# testar use_usd_brl=False
+"""
+    Testa o comportamento da função `enrich_with_external_features` com o parâmetro `use_usd_brl=False`.
+
+    - Garante que nenhuma coluna externa (como 'usd_brl') seja adicionada ao DataFrame.
+"""
 def test_enrich_with_external_features_disabled(sample_dataframe):
     result = enrich_with_external_features(sample_dataframe, use_usd_brl=False)
     assert "usd_brl" not in result.columns  # Nenhuma coluna externa adicionada
 
-# mockar falha na API
+"""
+    Testa o comportamento da função quando a API externa (cotação USD/BRL) falha ao retornar dados.
+
+    - Usa monkeypatch para simular falha na função `fetch_usd_brl_bacen`.
+    - Verifica se a coluna 'usd_brl' não foi adicionada ou está inteiramente nula.
+"""
 def test_enrich_with_external_features_fetch_fails(sample_dataframe, monkeypatch):
     def mock_fetch_fail(start, end):
         return pd.DataFrame()  # vazio

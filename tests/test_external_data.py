@@ -1,7 +1,16 @@
 from datetime import datetime
 from src.external_data import fetch_usd_brl_bacen
 
+"""
+    Testa a função `fetch_usd_brl_bacen`, que busca a cotação USD/BRL do Banco Central
+    em um intervalo de datas.
 
+    - Define um intervalo fixo de datas (início e fim).
+    - Chama a função e obtém um DataFrame com as cotações.
+    - Verifica se o DataFrame não está vazio.
+    - Confirma a presença das colunas esperadas: 'date' e 'usd_brl'.
+    - Valida se as datas retornadas estão dentro do intervalo especificado.
+"""
 def test_fetch_usd_brl_bacen_range():
     start_date = "2019-01-01"
     end_date = "2019-01-10"
