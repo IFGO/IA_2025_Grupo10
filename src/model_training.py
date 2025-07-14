@@ -513,30 +513,42 @@ def get_best_model_by_mse(  # type: ignore
     kfolds: int,
     poly_degree: int = 2,
     n_estimators: int = 150,
+    test_size: float = 0.3,
 ):
     """
-    Compara múltiplos modelos de regressão e retorna o de melhor desempenho.
+    Seleciona o melhor modelo de regressão com base em validação cruzada (K-Fold) e avalia seu desempenho em um conjunto de validação (hold-out).
 
-    Executa validação cruzada K-fold para vários modelos de regressão
-    (MLP, Linear, Polinomial e Random Forest), calcula o erro médio quadrático
-    (MSE) para cada modelo, identifica o modelo com o menor MSE médio e retorna
-    a instância treinada juntamente com seu nome.
+    Esta função realiza os seguintes passos:
+    1. Separa os dados em treino e validação final (hold-out), usando `test_size`.
+    2. Executa validação cruzada K-Fold apenas no conjunto de treino para estimar o desempenho médio (MSE) de cada modelo.
+    3. Identifica o modelo com menor MSE médio.
+    4. Reajusta o modelo vencedor em todo o conjunto de treino e avalia seu desempenho final nos dados de validação (hold-out), apenas para fins de comparação.
+    5. Retorna o modelo final treinado com os dados de treino e seu nome.
 
-    Args:
-        X (pd.DataFrame): DataFrame com as features de entrada.
-        y (pd.Series): Series com a variável alvo.
-        kfolds (int): O número de folds para a validação cruzada.
-        poly_degree (int, optional): Grau para a Regressão Polinomial. Padrão é 2.
-        n_estimators (int, optional): Número de árvores no RandomForest. Padrão é 150.
+    Modelos considerados:
+    - Regressão Linear
+    - Regressão Polinomial (grau configurável)
+    - Random Forest
+    - MLP Regressor (rede neural multicamadas)
 
-    Returns:
-        Tuple[RegressorMixin, str]: O melhor modelo ajustado e seu nome.
+    Parâmetros:
+        X (pd.DataFrame): Conjunto de variáveis independentes (features).
+        y (pd.Series): Variável alvo (preço de fechamento).
+        kfolds (int): Número de divisões para validação cruzada.
+        poly_degree (int, opcional): Grau máximo da Regressão Polinomial. Padrão: 2.
+        n_estimators (int, opcional): Número de árvores no Random Forest. Padrão: 150.
+        test_size (float, opcional): Proporção dos dados a serem reservados para o hold-out. Padrão: 0.3.
 
-    Side Effects:
-        - Registra os MSEs médios de cada modelo no log.
-        - Loga erros de execução caso algum modelo falhe ao treinar.
+    Retorna:
+        Tuple[RegressorMixin, str]: O modelo treinado (ajustado com os dados de treino) e o nome do modelo.
+
+    Efeitos colaterais:
+        - Registra no log os resultados de desempenho médio (K-Fold) e final (hold-out) para cada modelo.
     """
-    logging.info("Executando seleção automática do melhor modelo com base em MSE...")
+
+    logging.info(
+        "Executando seleção automática do melhor modelo com base em MSE (com hold-out)..."
+    )
 
     model_defs = {  # type: ignore
         "MLP": MLPRegressor(
@@ -555,30 +567,59 @@ def get_best_model_by_mse(  # type: ignore
         ),
     }
 
-    kf = KFold(n_splits=kfolds, shuffle=True, random_state=42)
     X_reset, y_reset = X.reset_index(drop=True), y.reset_index(drop=True)  # type: ignore
+
+    # Divide os dados entre treino e validação (hold-out)
+    if test_size > 0:
+        X_train_full, X_val, y_train_full, y_val = train_test_split(  # type: ignore
+            X_reset, y_reset, test_size=test_size, random_state=42
+        )
+    else:
+        X_train_full, y_train_full = X_reset, y_reset  # type: ignore
+        X_val, y_val = None, None
 
     best_model = None
     best_name = None
     best_mse = float("inf")
 
+    # Avalia os modelos usando apenas os dados de treino (K-Fold)
+    kf = KFold(n_splits=kfolds, shuffle=True, random_state=42)
+
     for name, model in model_defs.items():  # type: ignore
         try:
             mse_scores = []
-            for train_idx, test_idx in kf.split(X_reset):
-                X_train, X_test = X_reset.iloc[train_idx], X_reset.iloc[test_idx]
-                y_train, y_test = y_reset.iloc[train_idx], y_reset.iloc[test_idx]  # type: ignore
+            for train_idx, test_idx in kf.split(X_train_full):  # type: ignore
+                X_train, X_test = X_train_full.iloc[train_idx], X_train_full.iloc[test_idx]  # type: ignore
+                y_train, y_test = y_train_full.iloc[train_idx], y_train_full.iloc[test_idx]  # type: ignore
                 model.fit(X_train, y_train)  # type: ignore
                 y_pred = model.predict(X_test)  # type: ignore
                 mse_scores.append(mean_squared_error(y_test, y_pred))  # type: ignore
+
             avg_mse = np.mean(mse_scores)  # type: ignore
-            logging.info(f"{name} - MSE Médio: {avg_mse:.4f}")
+            logging.info(f"[{name}] MSE Médio (K-Fold): {avg_mse:.4f}")
+
             if avg_mse < best_mse:
                 best_mse = avg_mse
                 best_model = model  # type: ignore
                 best_name = name
         except Exception as e:
-            logging.error(f"Erro ao avaliar {name}: {e}")
+            logging.error(f"Erro ao avaliar modelo {name}: {e}")
+
+    # Reavalia o melhor modelo no conjunto de hold-out (apenas para log)
+    if best_model is not None and X_val is not None:
+        try:
+            best_model.fit(X_train_full, y_train_full)  # type: ignore
+            y_pred_val = best_model.predict(X_val)  # type: ignore
+            val_mse = mean_squared_error(y_val, y_pred_val)  # type: ignore
+            val_mae = mean_absolute_error(y_val, y_pred_val)  # type: ignore
+            val_r2 = r2_score(y_val, y_pred_val)  # type: ignore
+            logging.info(
+                f"[{best_name}] Avaliação no Hold-Out → MSE: {val_mse:.4f}, MAE: {val_mae:.4f}, R²: {val_r2:.4f}"
+            )
+        except Exception as e:
+            logging.warning(
+                f"Erro ao avaliar o melhor modelo ({best_name}) no hold-out: {e}"
+            )
 
     return best_model, best_name  # type: ignore
 
