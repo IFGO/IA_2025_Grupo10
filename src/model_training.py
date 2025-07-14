@@ -111,9 +111,12 @@ def train_and_evaluate_model(
     kf = KFold(n_splits=kfolds, shuffle=True, random_state=42)
     X_reset, y_reset = X.reset_index(drop=True), y.reset_index(drop=True)  # type: ignore
 
-    # Separa dados para validação final (hold-out) apenas se test_size > 0
+    # Separa dados para validação final (hold-out) apenas se test_size > 0. A separação é feita levando em conta separação temporal
     if test_size > 0:
-        X_train_full, X_val, y_train_full, y_val = train_test_split(X_reset, y_reset, test_size=test_size, random_state=42)  # type: ignore
+        split_index = int(len(X_reset) * (1 - test_size))
+        X_train_full, X_val = X_reset.iloc[:split_index], X_reset.iloc[split_index:]
+        y_train_full, y_val = y_reset.iloc[:split_index], y_reset.iloc[split_index:]  # type: ignore
+
     else:
         X_train_full, y_train_full = X_reset, y_reset  # type: ignore
         X_val, y_val = None, None
@@ -249,9 +252,12 @@ def compare_models(
     kf = KFold(n_splits=kfolds, shuffle=True, random_state=42)
     X_reset, y_reset = X.reset_index(drop=True), y.reset_index(drop=True)  # type: ignore
 
-    # Separa os dados para validação real (hold-out)
+    # Separa os dados para validação real (hold-out), levando em conta a temporalidade e não aleatoriedade
     if test_size > 0:
-        X_train_full, X_val, y_train_full, y_val = train_test_split(X_reset, y_reset, test_size=test_size, random_state=42)  # type: ignore
+        split_index = int(len(X_reset) * (1 - test_size))
+        X_train_full, X_val = X_reset.iloc[:split_index], X_reset.iloc[split_index:]
+        y_train_full, y_val = y_reset.iloc[:split_index], y_reset.iloc[split_index:]  # type: ignore
+
     else:
         X_train_full, y_train_full = X_reset, y_reset  # type: ignore
         X_val, y_val = None, None
@@ -569,11 +575,12 @@ def get_best_model_by_mse(  # type: ignore
 
     X_reset, y_reset = X.reset_index(drop=True), y.reset_index(drop=True)  # type: ignore
 
-    # Divide os dados entre treino e validação (hold-out)
+    # Divide os dados entre treino e validação (hold-out) levando em conta a separação temporal
     if test_size > 0:
-        X_train_full, X_val, y_train_full, y_val = train_test_split(  # type: ignore
-            X_reset, y_reset, test_size=test_size, random_state=42
-        )
+        split_index = int(len(X_reset) * (1 - test_size))
+        X_train_full, X_val = X_reset.iloc[:split_index], X_reset.iloc[split_index:]
+        y_train_full, y_val = y_reset.iloc[:split_index], y_reset.iloc[split_index:]  # type: ignore
+
     else:
         X_train_full, y_train_full = X_reset, y_reset  # type: ignore
         X_val, y_val = None, None
