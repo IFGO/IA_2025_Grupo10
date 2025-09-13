@@ -66,7 +66,6 @@ for csv_path in csv_files:
     modelo = modelo.fit()  # type: ignore
 
     print(csv_path, "-" * 50)
-    print(formula)  # type: ignore
     print("-" * 70)
     print(modelo.summary())
 
